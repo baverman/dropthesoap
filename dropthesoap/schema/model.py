@@ -55,3 +55,8 @@ class Namespace(object):
 
     def get_qname(self, tag):
         return etree.QName(self.namespace, tag).text
+
+
+class ModelInstance(object):
+    def __init__(self, model):
+        pass
