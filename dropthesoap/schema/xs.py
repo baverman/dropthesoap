@@ -78,7 +78,7 @@ class sequence(Node):
         elements = self.element_dict
         for name, value in kwargs.iteritems():
             if name not in elements:
-                raise Exception("Can't found [%s] in sequence")
+                raise Exception("Can't found [%s] in sequence" % name)
 
             setattr(instance, name, value)
 
