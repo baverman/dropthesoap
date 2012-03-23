@@ -11,8 +11,10 @@ def test_simple_schema():
         )
     )
 
-    AddResponse = xs.element(type=xs.int_)
+    AddResponse = xs.element(name='AddResponse', type=xs.int_)
 
     print etree.tostring(AddRequest.get_node())
+    print etree.tostring(AddRequest.instance(x=10, y=15).get_node())
+    print etree.tostring(AddResponse.instance(15).get_node())
 
     assert False
