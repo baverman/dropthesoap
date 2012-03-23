@@ -16,10 +16,7 @@ def test_simple_schema():
         xs.complexType()(
             xs.sequence()(
                 xs.element('x', xs.string),
-                xs.element('y', xs.string)
-            )
-        )
-    )
+                xs.element('y', xs.string))))
 
     AddResponse = xs.element('AddResponse', xs.int_)
 
