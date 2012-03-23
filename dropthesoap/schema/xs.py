@@ -10,19 +10,40 @@ def is_type(value):
     return (type(value) is type and issubclass(value, Type)) or isinstance(value, Type)
 
 
+class schema(Node):
+    namespace = namespace
+
+    def __init__(self, targetNamespace, elementFormDefault='qualified'):
+        self.targetNamespace = targetNamespace
+        Node.__init__(self, targetNamespace=targetNamespace.namespace, elementFormDefault=elementFormDefault)
+
+    def update_schema(self, node):
+        for c in node.children:
+            if isinstance(c, element):
+                c.schema = self
+
+            self.update_schema(c)
+
+    def __call__(self, *children):
+        Node.__call__(self, *children)
+        self.update_schema(self)
+        return self
+
+
 class element(Node):
-    __namespace__ = namespace
+    namespace = namespace
 
-    def __init__(self, **kwargs):
+    def __init__(self, name=None, type=None, **kwargs):
+        kwargs = kwargs.copy()
+        if type is not None:
+            kwargs['type'] = type
+            self.type = extract_type(type)
+
+        if name:
+            kwargs['name'] = name
+            self.name = name
+
         Node.__init__(self, **kwargs)
-
-        etype = self.attributes.get('type', None)
-        if etype is not None:
-            self.attributes['type'] = etype.ptag
-            self.type = extract_type(etype)
-
-        if 'name' in self.attributes:
-            self.name = self.attributes['name']
 
     def __call__(self, *children):
         Node.__call__(self, *children)
@@ -34,11 +55,11 @@ class element(Node):
         return self
 
     def instance(self, *args, **kwargs):
-        return self.type.instance_class(self.name, *args, **kwargs)
+        return self.type.instance_class(self, *args, **kwargs)
 
 
 class sequence(Node):
-    __namespace__ = namespace
+    namespace = namespace
 
     @cached_property
     def element_dict(self):
@@ -61,20 +82,20 @@ class sequence(Node):
 
             setattr(instance, name, value)
 
-    def fill_node(self, node, instance):
+    def fill_node(self, node, instance, creator):
         for e in self.element_list:
             if hasattr(instance, e.name):
                 value = getattr(instance, e.name)
-                if isinstance(value, Instance):
-                    node.append(value.get_node())
-                else:
-                    node.append(e.instance(value).get_node())
+                if not isinstance(value, Instance):
+                    value = e.instance(value)
+
+                node.append(value.get_node(creator))
             else:
                 raise Exception('Boo')
 
 
 class complexType(Type):
-    __namespace__ = namespace
+    namespace = namespace
     type_counter = 0
 
     def __call__(self, *children):
@@ -96,8 +117,8 @@ class complexType(Type):
         return type(name, (complexType,), fields)(**self.attributes)(*children)
 
     @classmethod
-    def fill_node(cls, node, instance):
-        cls.realtype.fill_node(node, instance)
+    def fill_node(cls, node, instance, creator):
+        cls.realtype.fill_node(node, instance, creator)
 
     @classmethod
     def init(cls, instance, **kwargs):
@@ -105,14 +126,14 @@ class complexType(Type):
 
 
 class simpleType(Type):
-    __namespace__ = namespace
+    namespace = namespace
 
     @staticmethod
     def init(instance, value):
         instance.value = value
 
     @classmethod
-    def fill_node(cls, node, instance):
+    def fill_node(cls, node, instance, _creator):
         node.text = cls.from_python(instance.value)
 
     @staticmethod
@@ -121,13 +142,15 @@ class simpleType(Type):
 
 
 class string(simpleType):
-    __namespace__ = namespace
+    namespace = namespace
 
 
 class int_(simpleType):
-    __namespace__ = namespace
+    __tag__ = 'int'
+    namespace = namespace
 
 
 class float_(simpleType):
-    __namespace__ = namespace
+    __tag__ = 'float'
+    namespace = namespace
 

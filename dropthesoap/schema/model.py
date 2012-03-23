@@ -3,21 +3,14 @@ try:
 except ImportError:
     from xml.etree import ElementTree as etree
 
-from ..utils import cached_property
 
 class TagDescriptor(object):
-    def __get__(self, instance, cls):
+    def __get__(_self, _instance, cls):
         return getattr(cls, '__tag__', None) or cls.__name__
-
-
-class PTagDescriptor(object):
-    def __get__(self, instance, cls):
-        return cls.__namespace__.get_prefixed_name(cls.tag)
 
 
 class Node(object):
     tag = TagDescriptor()
-    ptag = PTagDescriptor()
 
     def __init__(self, **attributes):
         self.attributes = attributes.copy()
@@ -27,10 +20,16 @@ class Node(object):
         self.children = list(children)
         return self
 
-    def get_node(self):
-        node = etree.Element(self.ptag, self.attributes)
+    def get_node(self, creator):
+        attributes = self.attributes
+        if 'type' in attributes:
+            attributes = attributes.copy()
+            etype = attributes['type']
+            attributes['type'] = creator.get_prefixed_tag(etype.namespace, etype.tag)
+
+        node = creator(self.__class__.namespace, self.tag, attributes)
         for child in self.children:
-            node.append(child.get_node())
+            node.append(child.get_node(creator))
 
         return node
 
@@ -57,32 +56,19 @@ class Type(Node):
 
 
 class Namespace(object):
-    ns_counter = 0
-
     def __init__(self, namespace, abbr=None):
         self.namespace = namespace
-
-        if not abbr:
-            abbr = 'ns%d' % Namespace.ns_counter
-            Namespace.ns_counter += 1
-
         self.abbr = abbr
-
-    def get_prefixed_name(self, tag):
-        return '{}:{}'.format(self.abbr, tag)
-
-    def get_qname(self, tag):
-        return etree.QName(self.namespace, tag).text
 
 
 class Instance(object):
-    def __init__(self, tag, *args, **kwargs):
-        self._tag = tag
+    def __init__(self, element, *args, **kwargs):
+        self._element = element
         self._type.init(self, *args, **kwargs)
 
-    def get_node(self):
-        node = etree.Element(self._tag)
-        self._type.fill_node(node, self)
+    def get_node(self, creator):
+        node = creator(self._element.schema.targetNamespace, self._element.name)
+        self._type.fill_node(node, self, creator)
         return node
 
 
@@ -92,3 +78,38 @@ def create_instance_class(etype):
     fields['_type'] = etype
 
     return type(name, (Instance,), fields)
+
+def get_root(node_getter):
+    creator = ElementCreator()
+    node = node_getter.get_node(creator)
+    for uri, prefix in creator.prefixes.iteritems():
+        node.attrib['xmlns:%s' % prefix] = uri
+
+    return node
+
+
+class ElementCreator(object):
+    def __init__(self):
+        self.ns_counter = 0
+        self.prefixes = {}
+
+    def get_prefix(self, namespace):
+        try:
+            return self.prefixes[namespace.namespace]
+        except KeyError:
+            pass
+
+        if namespace.abbr:
+            prefix = namespace.abbr
+        else:
+            prefix = 'ns%d' % self.ns_counter
+            self.ns_counter += 1
+
+        self.prefixes[namespace.namespace] = prefix
+        return prefix
+
+    def get_prefixed_tag(self, namespace, tag):
+        return '{}:{}'.format(self.get_prefix(namespace), tag)
+
+    def __call__(self, namespace, tag, *args, **kwargs):
+        return etree.Element(self.get_prefixed_tag(namespace, tag), *args, **kwargs)
