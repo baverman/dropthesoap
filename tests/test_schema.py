@@ -16,7 +16,7 @@ def test_simple_schema():
         xs.complexType()(
             xs.sequence()(
                 xs.element('x', xs.string),
-                xs.element('y', xs.string))))
+                xs.element('y', xs.int_))))
 
     AddResponse = xs.element('AddResponse', xs.int_)
 
@@ -27,3 +27,10 @@ def test_simple_schema():
 
     assert validate(schema, AddRequest.instance(x=10, y=15))
     assert validate(schema, AddResponse.instance(15))
+
+    obj = schema.fromstring(etree.tostring(get_root(AddRequest.instance(x=11, y=12))))
+    assert obj.x == '11'
+    assert obj.y == 12
+
+    obj = schema.fromstring(etree.tostring(get_root(AddResponse.instance(30))))
+    assert obj == 30

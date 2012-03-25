@@ -60,6 +60,9 @@ class Namespace(object):
         self.namespace = namespace
         self.abbr = abbr
 
+    def __str__(self):
+        return self.namespace
+
 
 class Instance(object):
     def __init__(self, element, *args, **kwargs):
@@ -70,6 +73,15 @@ class Instance(object):
         node = creator(self._element.schema.targetNamespace, self._element.name)
         self._type.fill_node(node, self, creator)
         return node
+
+
+class BareInstance(object):
+    def __init__(self, args, kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+    def create(self, element):
+        return element.instance(*self.args, **self.kwargs)
 
 
 def create_instance_class(etype):

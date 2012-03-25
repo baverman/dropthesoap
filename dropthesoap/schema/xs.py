@@ -1,4 +1,4 @@
-from .model import Node, Namespace, Type, Instance
+from .model import Node, Namespace, Type, Instance, etree, BareInstance
 from ..utils import cached_property
 
 namespace = Namespace('http://www.w3.org/2001/XMLSchema', 'xs')
@@ -17,6 +17,15 @@ class schema(Node):
         self.targetNamespace = targetNamespace
         Node.__init__(self, targetNamespace=targetNamespace.namespace, elementFormDefault=elementFormDefault)
 
+    @cached_property
+    def top_elements(self):
+        result = {}
+        for c in self.children:
+            if isinstance(c, element):
+                result[self.qname(c.name)] = c
+
+        return result
+
     def update_schema(self, node):
         for c in node.children:
             if isinstance(c, element):
@@ -29,6 +38,18 @@ class schema(Node):
         self.update_schema(self)
         return self
 
+    def from_node(self, tree):
+        element = self.top_elements[tree.tag]
+        return element.from_node(tree)
+
+    def fromstring(self, xml):
+        return self.from_node(etree.fromstring(xml))
+
+    def qname(self, tag):
+        if self.targetNamespace:
+            return '{%s}%s' % (self.targetNamespace, tag)
+        else:
+            return tag
 
 class element(Node):
     namespace = namespace
@@ -56,6 +77,13 @@ class element(Node):
 
     def instance(self, *args, **kwargs):
         return self.type.instance_class(self, *args, **kwargs)
+
+    def from_node(self, node):
+        result = self.type.from_node(node)
+        if isinstance(result, BareInstance):
+            return result.create(self)
+
+        return result
 
 
 class sequence(Node):
@@ -93,6 +121,13 @@ class sequence(Node):
             else:
                 raise Exception('Boo')
 
+    def from_node(self, node):
+        kwargs = {}
+        for c in self.element_list:
+            kwargs[c.name] = c.from_node(node.find(c.schema.qname(c.name)))
+
+        return BareInstance((), kwargs)
+
 
 class complexType(Type):
     namespace = namespace
@@ -124,6 +159,10 @@ class complexType(Type):
     def init(cls, instance, **kwargs):
         cls.realtype.init(instance, **kwargs)
 
+    @classmethod
+    def from_node(cls, node):
+        return cls.realtype.from_node(node)
+
 
 class simpleType(Type):
     namespace = namespace
@@ -144,13 +183,24 @@ class simpleType(Type):
 class string(simpleType):
     namespace = namespace
 
+    @staticmethod
+    def from_node(node):
+        return node.text
+
 
 class int_(simpleType):
     __tag__ = 'int'
     namespace = namespace
+
+    @staticmethod
+    def from_node(node):
+        return int(node.text)
 
 
 class float_(simpleType):
     __tag__ = 'float'
     namespace = namespace
 
+    @staticmethod
+    def from_node(node):
+        return float(node.text)
