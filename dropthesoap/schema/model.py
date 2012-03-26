@@ -17,7 +17,7 @@ class Node(object):
         self.children = []
 
     def __call__(self, *children):
-        self.children = list(children)
+        self.children.extend(children)
         return self
 
     def get_node(self, creator):

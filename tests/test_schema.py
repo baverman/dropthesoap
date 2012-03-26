@@ -1,24 +1,14 @@
-from StringIO import StringIO
 from dropthesoap.schema import xs
-from dropthesoap.schema.model import etree, Namespace, get_root
+from dropthesoap.schema.model import Namespace
 
-from lxml import etree as lxml_etree
-
-def validate(schema, instance):
-    schema_doc = lxml_etree.parse(StringIO(etree.tostring(get_root(schema))))
-    xmlschema = lxml_etree.XMLSchema(schema_doc)
-
-    doc = lxml_etree.parse(StringIO(etree.tostring(get_root(instance))))
-    return xmlschema.validate(doc)
+from .helpers import validate, tostring
 
 def test_simple_schema():
-    AddRequest = xs.element('AddRequest')(
-        xs.complexType()(
-            xs.sequence()(
-                xs.element('x', xs.string),
-                xs.element('y', xs.int_))))
+    AddRequest = xs.element('AddRequest')(xs.cts(
+        xs.element('x', xs.string),
+        xs.element('y', xs.int)))
 
-    AddResponse = xs.element('AddResponse', xs.int_)
+    AddResponse = xs.element('AddResponse', xs.int)
 
     schema = xs.schema(Namespace('http://boo', 'boo'))(
         AddRequest,
@@ -28,9 +18,57 @@ def test_simple_schema():
     assert validate(schema, AddRequest.instance(x=10, y=15))
     assert validate(schema, AddResponse.instance(15))
 
-    obj = schema.fromstring(etree.tostring(get_root(AddRequest.instance(x=11, y=12))))
+    obj = schema.fromstring(tostring(AddRequest.instance(x=11, y=12)))
     assert obj.x == '11'
     assert obj.y == 12
 
-    obj = schema.fromstring(etree.tostring(get_root(AddResponse.instance(30))))
+    obj = schema.fromstring(tostring(AddResponse.instance(30)))
     assert obj == 30
+
+def test_zero_min_occurs():
+    Request = xs.element('Request')(xs.cts(
+        xs.element('x', xs.string, minOccurs=0),
+        xs.element('y', xs.int)))
+
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        Request,
+    )
+
+    request = Request.instance(y=15)
+    assert validate(schema, request)
+
+    obj = schema.fromstring(tostring(request))
+    assert obj.x == None
+    assert obj.y == 15
+
+def test_max_occurs_grater_then_one():
+    Request = xs.element('Request')(xs.cts(
+        xs.element('x', xs.int, maxOccurs=xs.unbounded)))
+
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        Request,
+    )
+
+    request = Request.instance(x=[15, 22, 30])
+    assert validate(schema, request)
+
+    obj = schema.fromstring(tostring(request))
+    assert obj.x == [15, 22, 30]
+
+def test_attributes():
+    Request = xs.element('Request')(
+        xs.complexType()(
+            xs.sequence()(
+                xs.element('x', xs.int)),
+            xs.attribute('y', xs.int)))
+
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        Request,
+    )
+
+    request = Request.instance(x=15, y=20)
+    assert validate(schema, request)
+
+    obj = schema.fromstring(tostring(request))
+    assert obj.x == 15
+    assert obj.y == 20
