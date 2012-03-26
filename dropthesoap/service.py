@@ -1,7 +1,5 @@
-from functools import wraps
-
-from .schema import xs, soap
-from .schema.model import Namespace
+from .schema import xs, soap, wsdl
+from .schema.model import Namespace, get_root, etree
 
 class customize(object):
     def __init__(self, type, minOccurs=None, maxOccurs=None, default=None, nillable=None):
@@ -66,7 +64,10 @@ class Service(object):
         return inner
 
     def get_wsdl(self, url):
-        return 'Boo'
+        defs = wsdl.definitions.instance()
+        defs.types = wsdl.types.instance(_any=get_root(self.schema))
+
+        return etree.tostring(get_root(defs))
 
     def execute(self, xml):
         pass

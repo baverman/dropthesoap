@@ -1,6 +1,6 @@
 from itertools import izip_longest
 
-from .model import Node, Namespace, Type, Instance, etree, BareInstance
+from .model import Node, Namespace, Type, Instance, etree, BareInstance, ElementInstance
 from ..utils import cached_property
 
 namespace = Namespace('http://www.w3.org/2001/XMLSchema', 'xs')
@@ -237,7 +237,8 @@ class AttributeFiller(object):
 
                 node.attrib[k] = v.type.from_python(value)
 
-        self.realtype.fill_node(node, instance, creator)
+        if self.realtype:
+            self.realtype.fill_node(node, instance, creator)
 
     def init(self, instance, **kwargs):
         for k in list(kwargs):
@@ -245,16 +246,20 @@ class AttributeFiller(object):
                 setattr(instance, k, kwargs[k])
                 del kwargs[k]
 
-        self.realtype.init(instance, **kwargs)
+        if self.realtype:
+            self.realtype.init(instance, **kwargs)
 
     def from_node(self, node):
         kwargs = {}
         for k, v in node.items():
             kwargs[k] = self.attributes[k].type.to_python(v)
 
-        result = self.realtype.from_node(node)
-        if kwargs and isinstance(result, BareInstance):
-            result.kwargs.update(kwargs)
+        if self.realtype:
+            result = self.realtype.from_node(node)
+            if kwargs and isinstance(result, BareInstance):
+                result.kwargs.update(kwargs)
+        else:
+            result = BareInstance((), kwargs)
 
         return result
 
@@ -279,11 +284,8 @@ class complexType(Type):
             elif isinstance(c, attribute):
                 attrs[c.name] = c
 
-        if not fields.get('realtype', None):
-            raise Exception('No any subtype')
-
         if attrs:
-            fields['realtype'] = AttributeFiller(fields['realtype'], attrs)
+            fields['realtype'] = AttributeFiller(fields.get('realtype', None), attrs)
 
         return type(name, (complexType,), fields)(**self.attributes)(*children)
 
@@ -365,6 +367,9 @@ class any(element):
         self.name = '_any'
         self.type = anyType
         Node.__init__(self, **attributes)
+
+    def instance(self, node=None):
+        return ElementInstance(node)
 
     def match(self, node):
         return True

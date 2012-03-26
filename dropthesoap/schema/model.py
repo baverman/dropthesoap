@@ -75,6 +75,14 @@ class Instance(object):
         return node
 
 
+class ElementInstance(Instance):
+    def __init__(self, tree):
+        self.value = tree
+
+    def get_node(self, _creator):
+        return self.value
+
+
 class BareInstance(object):
     def __init__(self, args, kwargs):
         self.args = args

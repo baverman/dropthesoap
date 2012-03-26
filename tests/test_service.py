@@ -10,6 +10,6 @@ def test_simple_service():
     def add(x=xs.int, y=xs.int):
         return x + y
 
-    print tostring(s.schema)
+    print s.get_wsdl('boo')
 
     assert False
