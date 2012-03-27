@@ -97,7 +97,7 @@ class Service(object):
                 name=name,
                 operation=wsdl.soap_operation.instance(soapAction=name),
                 input=wsdl.input.instance(body=wsdl.soap_body.instance(use='literal')),
-                output=wsdl.input.instance(body=wsdl.soap_body.instance(use='literal'))))
+                output=wsdl.output.instance(body=wsdl.soap_body.instance(use='literal'))))
 
         defs.service = [wsdl.service.instance(
             name=self.name,

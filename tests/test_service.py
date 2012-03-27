@@ -12,7 +12,7 @@ def test_simple_service():
     def add(x=xs.int, y=xs.int):
         return x + y
 
-    #open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
+    open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
 
     cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
 
