@@ -74,6 +74,10 @@ class Instance(object):
         self._type.fill_node(node, self, creator)
         return node
 
+    @property
+    def tag(self):
+        return self._element.name
+
 
 class ElementInstance(Instance):
     def __init__(self, tree):

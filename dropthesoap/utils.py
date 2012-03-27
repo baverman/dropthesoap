@@ -11,3 +11,4 @@ def cached_property(func):
         return result
 
     return property(inner)
+

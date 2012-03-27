@@ -1,7 +1,7 @@
 from . import xs
 from .model import Namespace
 
-namespace = Namespace('http://www.w3.org/2001/12/soap-envelope', 'soap')
+namespace = Namespace('http://schemas.xmlsoap.org/soap/envelope/', 'soap')
 
 Header = xs.element('Header', minOccurs=0)(
     xs.complexType()(

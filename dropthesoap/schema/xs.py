@@ -47,7 +47,7 @@ class schema(Node):
 
     def update_schema(self, node):
         for c in node.children:
-            if isinstance(c, element):
+            if isinstance(c, element) and not hasattr(c, 'schema'):
                 c.schema = self
 
             self.update_schema(c)
