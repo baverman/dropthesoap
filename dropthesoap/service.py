@@ -35,7 +35,6 @@ class Service(object):
             name = func.__name__
             defaults = func.__defaults__
             if defaults:
-                print defaults,
                 names = func.__code__.co_varnames[:func.__code__.co_argcount][-len(defaults):]
             else:
                 names = []
