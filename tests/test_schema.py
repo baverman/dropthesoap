@@ -94,3 +94,20 @@ def test_enumeration():
     request = Request.instance('fr')
     assert not validate(schema, request)
 
+def test_simple_content():
+    Request = xs.element('Request')(
+        xs.complexType()(
+            xs.simpleContent()(
+                xs.extension(xs.string)(
+                    xs.attribute('lang', xs.string)))))
+
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        Request,
+    )
+
+    request = Request.instance(value='message', lang='en')
+    assert validate(schema, request)
+
+    obj = schema.fromstring(tostring(request))
+    assert obj.value == 'message'
+    assert obj.lang == 'en'

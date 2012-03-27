@@ -265,8 +265,13 @@ class AttributeFiller(object):
 
         if self.realtype:
             result = self.realtype.from_node(node)
-            if kwargs and isinstance(result, BareInstance):
-                result.kwargs.update(kwargs)
+            if kwargs:
+                if isinstance(result, BareInstance):
+                    result.kwargs.update(kwargs)
+                elif not isinstance(result, Instance):
+                    kwargs['value'] = result
+                    result = BareInstance((), kwargs)
+
         else:
             result = BareInstance((), kwargs)
 
@@ -304,7 +309,7 @@ class complexType(Type, _DelegateType):
 
         attrs = {}
         for c in children:
-            if isinstance(c, (sequence,)):
+            if isinstance(c, (sequence, simpleContent)):
                 fields['realtype'] = c
             elif isinstance(c, attribute):
                 attrs[c.name] = c
@@ -429,10 +434,58 @@ class restriction(Node):
         self.base.init(instance, value)
 
     def fill_node(self, node, instance, _creator):
-        node.text = self.base.from_python(instance.value)
+        self.base.fill_node(node, instance, _creator)
 
     def from_node(self, node):
-        return self.base.to_python(node.text)
+        return self.base.from_node(node)
+
+
+class _InstanceDelegateType(object):
+    def init(self, instance, *args, **kwargs):
+        self.delegate.init(instance, *args, **kwargs)
+
+    def fill_node(self, node, instance, _creator):
+        self.delegate.fill_node(node, instance, _creator)
+
+    def from_node(self, node):
+        return self.delegate.from_node(node)
+
+
+class extension(_InstanceDelegateType, Node):
+    namespace = namespace
+
+    def __init__(self, base):
+        self.base = extract_type(base)
+        Node.__init__(self, base=base)
+
+    def __call__(self, *children):
+        Node.__call__(self, *children)
+
+        attrs = {}
+        for c in children:
+            if isinstance(c, attribute):
+                attrs[c.name] = c
+
+        if attrs:
+            self.delegate = AttributeFiller(self.base, attrs)
+        else:
+            self.delegate = self.base
+
+        return self
+
+
+class simpleContent(Node, _InstanceDelegateType):
+    namespace = namespace
+
+    def __call__(self, *children):
+        Node.__call__(self, *children)
+
+        for c in children:
+            if isinstance(c, (extension, restriction)):
+                self.delegate = c
+                break
+
+        return self
 
 
 class enumeration(Node):
