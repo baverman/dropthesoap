@@ -27,6 +27,11 @@ class Node(object):
             etype = attributes['type']
             attributes['type'] = creator.get_prefixed_tag(etype.namespace, etype.tag)
 
+        if 'base' in attributes:
+            attributes = attributes.copy()
+            etype = attributes['base']
+            attributes['base'] = creator.get_prefixed_tag(etype.namespace, etype.tag)
+
         node = creator(self.__class__.namespace, self.tag, attributes)
         for child in self.children:
             node.append(child.get_node(creator))

@@ -264,13 +264,29 @@ class AttributeFiller(object):
         return result
 
 
-class complexType(Type):
+class _DelegateType(object):
+    @classmethod
+    def fill_node(cls, node, instance, creator):
+        cls.realtype.fill_node(node, instance, creator)
+
+    @classmethod
+    def init(cls, instance, **kwargs):
+        cls.realtype.init(instance, **kwargs)
+
+    @classmethod
+    def from_node(cls, node):
+        return cls.realtype.from_node(node)
+
+
+class complexType(Type, _DelegateType):
     namespace = namespace
     type_counter = 0
 
     def __call__(self, *children):
-        complexType.type_counter += 1
-        name = 'ComplexType{}'.format(complexType.type_counter)
+        name = self.attributes.get('name', None)
+        if not name:
+            complexType.type_counter += 1
+            name = 'ComplexType{}'.format(complexType.type_counter)
 
         fields = {
             '__call__': Type.__call__,
@@ -289,22 +305,40 @@ class complexType(Type):
 
         return type(name, (complexType,), fields)(**self.attributes)(*children)
 
-    @classmethod
-    def fill_node(cls, node, instance, creator):
-        cls.realtype.fill_node(node, instance, creator)
 
-    @classmethod
-    def init(cls, instance, **kwargs):
-        cls.realtype.init(instance, **kwargs)
-
-    @classmethod
-    def from_node(cls, node):
-        return cls.realtype.from_node(node)
-
-
-class simpleType(Type):
+class simpleType(Type, _DelegateType):
     namespace = namespace
+    type_counter = 0
 
+    @classmethod
+    def init(cls, instance, value):
+        cls.realtype.init(instance, value)
+
+    def __call__(self, *children):
+        name = self.attributes.get('name', None)
+        if not name:
+            simpleType.type_counter += 1
+            name = 'SimpleType{}'.format(complexType.type_counter)
+
+        fields = {
+            '__call__': Type.__call__,
+            '__tag__': self.tag
+        }
+
+        for c in children:
+            if isinstance(c, restriction):
+                fields['realtype'] = c
+                break
+        else:
+            raise Exception('Child of simple type must be a restriction')
+
+        for c in fields['realtype'].children:
+            fields[c.value] = c.value
+
+        return type(name, (simpleType,), fields)(**self.attributes)(*children)
+
+
+class _FinalSimpleType(Type):
     @staticmethod
     def init(instance, value):
         instance.value = value
@@ -322,7 +356,7 @@ class simpleType(Type):
         return cls.to_python(node.text)
 
 
-class string(simpleType):
+class string(_FinalSimpleType):
     namespace = namespace
 
     @staticmethod
@@ -330,7 +364,7 @@ class string(simpleType):
         return value
 
 
-class int(simpleType):
+class int(_FinalSimpleType):
     namespace = namespace
 
     @staticmethod
@@ -338,7 +372,7 @@ class int(simpleType):
         return _int(value)
 
 
-class float_(simpleType):
+class float_(_FinalSimpleType):
     namespace = namespace
 
     @staticmethod
@@ -373,6 +407,30 @@ class any(element):
 
     def match(self, node):
         return True
+
+
+class restriction(Node):
+    namespace = namespace
+
+    def __init__(self, base):
+        self.base = extract_type(base)
+        Node.__init__(self, base=base)
+
+    def init(self, instance, value):
+        self.base.init(instance, value)
+
+    def fill_node(self, node, instance, _creator):
+        node.text = self.base.from_python(instance.value)
+
+    def from_node(self, node):
+        return self.base.to_python(node.text)
+
+
+class enumeration(Node):
+    namespace = namespace
+    def __init__(self, value):
+        self.value = value
+        Node.__init__(self, value=value)
 
 
 def cts(*args):

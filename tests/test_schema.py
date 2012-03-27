@@ -72,3 +72,25 @@ def test_attributes():
     obj = schema.fromstring(tostring(request))
     assert obj.x == 15
     assert obj.y == 20
+
+def test_enumeration():
+    Request = xs.element('Request')(
+        xs.simpleType()(
+            xs.restriction(base=xs.string)(
+                xs.enumeration('en'),
+                xs.enumeration('ru'))))
+
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        Request,
+    )
+
+    request = Request.instance('en')
+    assert validate(schema, request)
+
+    obj = schema.fromstring(tostring(request))
+    assert obj == 'en'
+    assert Request.type.en == 'en'
+
+    request = Request.instance('fr')
+    assert not validate(schema, request)
+
