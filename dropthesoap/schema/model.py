@@ -65,8 +65,8 @@ class Namespace(object):
 
 
 class Instance(object):
-    def __init__(self, element, *args, **kwargs):
-        self._element = element
+    def __init__(self, _element, *args, **kwargs):
+        self._element = _element
         self._type.init(self, *args, **kwargs)
 
     def get_node(self, creator):

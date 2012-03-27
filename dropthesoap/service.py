@@ -67,6 +67,25 @@ class Service(object):
         defs = wsdl.definitions.instance()
         defs.types = wsdl.types.instance(_any=get_root(self.schema))
 
+        messages = defs.message = []
+        port = wsdl.portType.instance(name=self.name)
+        operations = port.operation = []
+        defs.portType = [port]
+
+        for name in self.methods:
+            nameRequest = '%sRequest' % name
+            nameResponse = '%sResponse' % name
+
+            messages.append(wsdl.message.instance(name=nameRequest,
+                part=wsdl.part.instance(name='parameters', element='tns:%s' % name)))
+
+            messages.append(wsdl.message.instance(name=nameResponse,
+                part=wsdl.part.instance(name='parameters', element='tns:%s' % nameResponse)))
+
+            operations.append(wsdl.operation.instance(name=name,
+                input=wsdl.input.instance(message=nameRequest),
+                output=wsdl.output.instance(message=nameResponse)))
+
         return etree.tostring(get_root(defs))
 
     def execute(self, xml):
