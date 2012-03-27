@@ -1,2 +1,5 @@
 *.pyc
-.snaked_project/
+/.snaked_project/
+/*.egg-info/
+/dist/
+/build/
