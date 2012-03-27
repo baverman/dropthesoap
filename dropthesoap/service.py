@@ -29,12 +29,17 @@ class Service(object):
         self.method_schema = xs.schema(Namespace(tns))
         self.schema = xs.schema(Namespace(tns))
 
-    def expose(self, returns=None):
+    def expose(self, returns=None, context=False):
         assert returns
         def inner(func):
             name = func.__name__
             defaults = func.__defaults__
-            names = func.__code__.co_varnames[-len(defaults):]
+            if defaults:
+                print defaults,
+                names = func.__code__.co_varnames[:func.__code__.co_argcount][-len(defaults):]
+            else:
+                names = []
+                defaults = []
 
             celements = []
             for n, t in zip(names, defaults):
@@ -51,14 +56,18 @@ class Service(object):
             self.schema(request)
 
             rname = name + 'Response'
-            if isinstance(returns, customize):
+            if isinstance(returns, xs.element):
+                response = returns
+                response.name = rname
+                response.attributes['name'] = rname
+            elif isinstance(returns, customize):
                 response = returns.get_element(rname)
             else:
                 response = xs.element(rname, returns)
 
             self.schema(response)
 
-            self.methods[name] = func, names, response
+            self.methods[name] = func, context, names, response
             return func
 
         return inner
@@ -114,7 +123,7 @@ class Service(object):
         return etree.tostring(tree)
 
     def dispatch(self, request):
-        func, names, response = self.methods[request.tag]
+        func, context, names, response = self.methods[request.tag]
         args = []
         for name in names:
             args.append(getattr(request, name))

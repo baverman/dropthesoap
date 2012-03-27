@@ -8,9 +8,14 @@ class TagDescriptor(object):
     def __get__(_self, _instance, cls):
         return getattr(cls, '__tag__', None) or cls.__name__
 
+class TypeNameDescriptor(object):
+    def __get__(_self, instance, cls):
+        return instance.attributes['name'] if instance else cls.tag
+
 
 class Node(object):
     tag = TagDescriptor()
+    type_name = TypeNameDescriptor()
 
     def __init__(self, **attributes):
         self.attributes = attributes.copy()
@@ -25,12 +30,12 @@ class Node(object):
         if 'type' in attributes:
             attributes = attributes.copy()
             etype = attributes['type']
-            attributes['type'] = creator.get_prefixed_tag(etype.namespace, etype.tag)
+            attributes['type'] = creator.get_prefixed_tag(etype.namespace, etype.type_name)
 
         if 'base' in attributes:
             attributes = attributes.copy()
             etype = attributes['base']
-            attributes['base'] = creator.get_prefixed_tag(etype.namespace, etype.tag)
+            attributes['base'] = creator.get_prefixed_tag(etype.namespace, etype.type_name)
 
         node = creator(self.__class__.namespace, self.tag, attributes)
         for child in self.children:

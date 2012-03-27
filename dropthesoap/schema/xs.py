@@ -45,10 +45,16 @@ class schema(Node):
 
         return result
 
+    def __getitem__(self, name):
+        return self.top_elements[self.qname(name)]
+
     def update_schema(self, node):
         for c in node.children:
             if isinstance(c, element) and not hasattr(c, 'schema'):
                 c.schema = self
+
+            if isinstance(c, Type) and 'name' in c.attributes:
+                c.namespace = self.targetNamespace
 
             self.update_schema(c)
 
@@ -94,6 +100,9 @@ class element(Node):
                 break
 
         return self
+
+    def __getitem__(self, name):
+        return self.type.realtype.element_dict[name]
 
     def instance(self, *args, **kwargs):
         return self.type.instance_class(self, *args, **kwargs)
