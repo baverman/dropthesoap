@@ -1,4 +1,4 @@
-from .model import Node, Namespace, Type, Instance, etree, BareInstance, ElementInstance
+from .model import Node, Namespace, Type, Instance, etree, BareInstance, ElementInstance, TypeInstance
 from ..utils import cached_property
 
 namespace = Namespace('http://www.w3.org/2001/XMLSchema', 'xs')
@@ -124,6 +124,14 @@ class element(Node):
     def match(self, node):
         return self.schema.qname(self.name) == node.tag
 
+    def normalize(self, value):
+        if isinstance(value, TypeInstance):
+            return value.create(self)
+        elif not isinstance(value, Instance):
+            return self.instance(value)
+        else:
+            return value
+
     def __repr__(self):
         return '<{} name="{}">'.format(self.tag, self.name)
 
@@ -175,10 +183,8 @@ class sequence(Node):
                     values = [values]
 
                 for v in values:
-                    if not isinstance(v, Instance):
-                        v = e.instance(v)
+                    node.append(e.normalize(v).get_node(creator))
 
-                    node.append(v.get_node(creator))
             elif getattr(e, 'minOccurs', 1) == 0:
                 pass
             else:
@@ -189,9 +195,8 @@ class sequence(Node):
         cnodes = iter(node)
         c = next(cnodes, None)
         elements = iter(self.element_list)
-        e = next(elements)
-
         try:
+            e = next(elements)
             while True:
                 if c is None:
                     if e.name not in kwargs:

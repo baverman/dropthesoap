@@ -127,3 +127,11 @@ def test_type_instances():
     obj = schema.fromstring(tostring(real_request))
     assert obj.x == 'message'
 
+
+    request = Request.type.instance()
+    request.x = 'message'
+    real_request = request.create(Request)
+    assert validate(schema, real_request)
+
+    obj = schema.fromstring(tostring(real_request))
+    assert obj.x == 'message'

@@ -180,14 +180,7 @@ class Service(object):
         for name in method.names:
             args.append(getattr(request, name))
 
-        result = method.func(*args)
-
-        if isinstance(result, TypeInstance):
-            result = result.create(method.response)
-        elif not isinstance(result, Instance):
-            result = method.response.instance(result)
-
-        return result
+        return method.response.normalize(method.func(*args))
 
     def call(self, transport_request, xml):
         try:
@@ -208,4 +201,4 @@ class Service(object):
         tree = get_root(renvelope)
         tree.attrib['soap:encodingStyle'] = 'http://www.w3.org/2001/12/soap-encoding'
 
-        return etree.tostring(tree)
+        return etree.tostring(tree, encoding='utf-8')

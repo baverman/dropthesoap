@@ -102,6 +102,15 @@ class TypeInstance(object):
         self.inferior_instance._element = element
         return self.inferior_instance
 
+    def __getattr__(self, name):
+        return getattr(self.inferior_instance, name)
+
+    def __setattr__(self, name, value):
+        if name in ('inferior_instance'):
+            object.__setattr__(self, name, value)
+        else:
+            setattr(self.inferior_instance, name, value)
+
 
 class ElementInstance(Instance):
     def __init__(self, tree):

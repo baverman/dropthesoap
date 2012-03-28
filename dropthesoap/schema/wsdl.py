@@ -29,6 +29,7 @@ soap_schema = xs.schema(Namespace('http://schemas.xmlsoap.org/wsdl/soap/', 'soap
     soap_binding,
     soap_operation,
     soap_body,
+    soap_header,
     soap_address
 )
 
