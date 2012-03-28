@@ -1,5 +1,3 @@
-from itertools import izip_longest
-
 from .model import Node, Namespace, Type, Instance, etree, BareInstance, ElementInstance
 from ..utils import cached_property
 
@@ -48,19 +46,19 @@ class schema(Node):
     def __getitem__(self, name):
         return self.top_elements[self.qname(name)]
 
-    def update_schema(self, node):
-        for c in node.children:
+    def update_schema(self, nodes):
+        for c in nodes:
             if isinstance(c, element) and not hasattr(c, 'schema'):
                 c.schema = self
 
             if isinstance(c, Type) and 'name' in c.attributes:
                 c.namespace = self.targetNamespace
 
-            self.update_schema(c)
+            self.update_schema(c.children)
 
     def __call__(self, *children):
         Node.__call__(self, *children)
-        self.update_schema(self)
+        self.update_schema(children)
         return self
 
     def from_node(self, tree):
