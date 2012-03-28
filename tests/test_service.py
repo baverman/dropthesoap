@@ -69,9 +69,9 @@ def test_header():
     def auth(func):
         @service.header(service.schema['AuthHeader'])
         @service.wraps(func)
-        def inner(request, *args, **kwargs):
+        def inner(request, *args):
             if request.header.what == 'auth':
-                return func(*args, **kwargs)
+                return func(*args)
             else:
                 return 'blam'
 
@@ -82,7 +82,7 @@ def test_header():
     def upper(string=xs.string):
         return string.upper()
 
-    open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
+    #open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
 
     cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
 

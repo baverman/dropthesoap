@@ -11,5 +11,5 @@ service = Service('Adder', 'http://github.com/baverman/Adder/')
 def add(x=xs.int, y=xs.int):
     return x + y
 
-app = Application(service, '/')
+app = Application(service)
 app.run()
