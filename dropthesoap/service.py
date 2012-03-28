@@ -1,5 +1,5 @@
 from .schema import xs, wsdl, soap
-from .schema.model import Namespace, get_root, etree, Instance
+from .schema.model import Namespace, get_root, etree, Instance, TypeInstance
 
 class customize(object):
     def __init__(self, type, minOccurs=None, maxOccurs=None, default=None, nillable=None):
@@ -129,7 +129,9 @@ class Service(object):
 
         result = func(*args)
 
-        if not isinstance(result, Instance):
+        if isinstance(result, TypeInstance):
+            result = result.create(response)
+        elif not isinstance(result, Instance):
             result = response.instance(result)
 
         return result

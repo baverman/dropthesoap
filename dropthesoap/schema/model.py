@@ -8,6 +8,7 @@ class TagDescriptor(object):
     def __get__(_self, _instance, cls):
         return getattr(cls, '__tag__', None) or cls.__name__
 
+
 class TypeNameDescriptor(object):
     def __get__(_self, instance, cls):
         return instance.attributes['name'] if instance else cls.tag
@@ -58,11 +59,15 @@ class Type(Node):
             result = self.cache[cls] = create_instance_class(cls)
             return result
 
+    instance_class = InstanceClassDescriptor()
+
     @classmethod
     def get_name(cls):
         return cls.__name__
 
-    instance_class = InstanceClassDescriptor()
+    @classmethod
+    def instance(cls, *args, **kwargs):
+        return TypeInstance(cls, *args, **kwargs)
 
 
 class Namespace(object):
@@ -87,6 +92,15 @@ class Instance(object):
     @property
     def tag(self):
         return self._element.name
+
+
+class TypeInstance(object):
+    def __init__(self, type, *args, **kwargs):
+        self.inferior_instance = type.instance_class(None, *args, **kwargs)
+
+    def create(self, element):
+        self.inferior_instance._element = element
+        return self.inferior_instance
 
 
 class ElementInstance(Instance):

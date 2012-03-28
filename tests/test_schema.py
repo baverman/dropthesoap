@@ -111,3 +111,19 @@ def test_simple_content():
     obj = schema.fromstring(tostring(request))
     assert obj.value == 'message'
     assert obj.lang == 'en'
+
+def test_type_instances():
+    Request = xs.element('Request')(xs.cts(
+        xs.element('x', xs.string)))
+
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        Request,
+    )
+
+    request = Request.type.instance(x='message')
+    real_request = request.create(Request)
+    assert validate(schema, real_request)
+
+    obj = schema.fromstring(tostring(real_request))
+    assert obj.x == 'message'
+
