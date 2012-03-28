@@ -1,6 +1,7 @@
 from suds.client import Client
+from suds.client import WebFault
 
-from dropthesoap.service import Service, optional
+from dropthesoap.service import Service, optional, Fault
 from dropthesoap.schema import xs
 
 from .helpers import DirectSudsTransport, tostring
@@ -97,3 +98,30 @@ def test_header():
     cl.set_options(soapheaders=token)
     result = cl.service.upper('boo')
     assert result == 'blam'
+
+def test_faults():
+    service = Service('Boo', 'http://boo')
+
+    @service.expose(xs.string)
+    def upper(string=xs.string):
+        if string == 'boo':
+            raise Exception('Boo')
+        if string == 'bar':
+            raise Fault('Client.Auth', 'Authentication failed')
+
+    cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
+
+    try:
+        result = cl.service.upper('boo')
+        assert False, 'WebFault must be thrown'
+    except WebFault as e:
+        assert e.fault.faultcode == 'Server'
+        assert e.fault.faultstring == 'Boo'
+        assert 'in upper' in e.fault.detail
+
+    try:
+        result = cl.service.upper('bar')
+        assert False, 'WebFault must be thrown'
+    except WebFault as e:
+        assert e.fault.faultcode == 'Client.Auth'
+        assert e.fault.faultstring == 'Authentication failed'

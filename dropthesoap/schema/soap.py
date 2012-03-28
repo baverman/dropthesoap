@@ -19,6 +19,14 @@ Envelope = xs.element('Envelope')(
             Header,
             Body)))
 
+Fault = xs.element('Fault')(xs.cts(
+    xs.element('faultcode', xs.string),
+    xs.element('faultstring', xs.string),
+    xs.element('faultactor', xs.string, minOccurs=0),
+    xs.element('detail', xs.string, minOccurs=0)))
+
 schema = xs.schema(namespace)(
     Envelope
 )
+
+schema.update_schema([Fault])

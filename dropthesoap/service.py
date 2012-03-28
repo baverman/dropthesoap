@@ -1,6 +1,7 @@
+import traceback
+
 from .schema import xs, wsdl, soap
 from .schema.model import Namespace, get_root, etree, Instance, TypeInstance
-from .utils import cached_property
 
 class customize(object):
     def __init__(self, type, minOccurs=None, maxOccurs=None, default=None, nillable=None):
@@ -36,6 +37,12 @@ class Method(object):
         self.response = response
         self.need_context = False
         self.header = None
+
+
+class Fault(Exception):
+    def __init__(self, code, message):
+        self.code = code
+        Exception.__init__(self, message)
 
 
 class Service(object):
@@ -183,12 +190,19 @@ class Service(object):
         return result
 
     def call(self, transport_request, xml):
-        envelope = soap.schema.fromstring(xml)
-        request = self.method_schema.from_node(envelope.Body._any[0])
+        try:
+            envelope = soap.schema.fromstring(xml)
+            request = self.method_schema.from_node(envelope.Body._any[0])
+            ctx = Request(transport_request, envelope)
 
-        ctx = Request(transport_request, envelope)
+            response = self.dispatch(ctx, request)
+        except Exception as e:
+            faultcode = 'Server'
+            if isinstance(e, Fault):
+                faultcode = e.code
 
-        response = self.dispatch(ctx, request)
+            response = soap.Fault.instance(faultcode=faultcode, faultstring=str(e),
+                detail=traceback.format_exc())
 
         renvelope = soap.Envelope.instance(Body=soap.Body.instance(_any=[response]))
         tree = get_root(renvelope)
