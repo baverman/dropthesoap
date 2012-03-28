@@ -28,4 +28,4 @@ class DirectSudsTransport(Transport):
         return StringIO(self._service.get_wsdl('http://testserver/'))
 
     def send(self, request):
-        return Reply('200 OK', {}, self._service.call(request.message))
+        return Reply('200 OK', {}, self._service.call(request, request.message))

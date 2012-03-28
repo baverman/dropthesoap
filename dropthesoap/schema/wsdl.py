@@ -15,6 +15,12 @@ soap_body = xs.element('body', minOccurs=0)(
     xs.complexType()(
         xs.attribute('use', xs.string)))
 
+soap_header = xs.element('header', minOccurs=0)(
+    xs.complexType()(
+        xs.attribute('use', xs.string),
+        xs.attribute('message', xs.string),
+        xs.attribute('part', xs.string)))
+
 soap_address = xs.element('address', minOccurs=0)(
     xs.complexType()(
         xs.attribute('location', xs.string)))
@@ -45,7 +51,8 @@ message = xs.element('message', minOccurs=0, maxOccurs=xs.unbounded)(
 input = xs.element('input')(
     xs.complexType()(
         xs.sequence()(
-            soap_body),
+            soap_body,
+            soap_header),
         xs.attribute('message', xs.string)))
 
 output = xs.element('output')(

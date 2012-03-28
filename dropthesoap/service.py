@@ -1,5 +1,6 @@
 from .schema import xs, wsdl, soap
 from .schema.model import Namespace, get_root, etree, Instance, TypeInstance
+from .utils import cached_property
 
 class customize(object):
     def __init__(self, type, minOccurs=None, maxOccurs=None, default=None, nillable=None):
@@ -21,6 +22,22 @@ class array(customize):
         customize.__init__(self, type, minOccurs=0, maxOccurs=xs.unbounded)
 
 
+class Request(object):
+    def __init__(self, transport_request, envelope):
+        self.transport_request = transport_request
+        self.envelope = envelope
+        self.header = None
+
+
+class Method(object):
+    def __init__(self, func, names, response):
+        self.func = func
+        self.names = names
+        self.response = response
+        self.need_context = False
+        self.header = None
+
+
 class Service(object):
     def __init__(self, name, tns):
         self.name = name
@@ -29,7 +46,7 @@ class Service(object):
         self.method_schema = xs.schema(Namespace(tns))
         self.schema = xs.schema(Namespace(tns))
 
-    def expose(self, returns, context=False):
+    def expose(self, returns):
         def inner(func):
             name = func.__name__
             defaults = func.__defaults__
@@ -65,7 +82,24 @@ class Service(object):
 
             self.schema(response)
 
-            self.methods[name] = func, context, names, response
+            self.methods[name] = Method(func, names, response)
+            return func
+
+        return inner
+
+    def wraps(self, original_func):
+        name = original_func.__name__
+        def inner(func):
+            self.methods[name].func = func
+            self.methods[name].need_context = True
+            func.__name__ = name
+            return func
+
+        return inner
+
+    def header(self, header):
+        def inner(func):
+            self.methods[func.__name__].header = header
             return func
 
         return inner
@@ -86,7 +120,7 @@ class Service(object):
         defs.binding = [binding]
         boperations = binding.operation = []
 
-        for name in self.methods:
+        for name, method in self.methods.iteritems():
             nameRequest = '%sRequest' % name
             nameResponse = '%sResponse' % name
 
@@ -100,11 +134,20 @@ class Service(object):
                 input=wsdl.input.instance(message='tns:%s' % nameRequest),
                 output=wsdl.output.instance(message='tns:%s' % nameResponse)))
 
+            binput = wsdl.input.instance(body=wsdl.soap_body.instance(use='literal'))
+            if method.header:
+                binput.header = wsdl.soap_header.instance(
+                    use='literal', message='tns:%s' % method.header.name, part=method.header.name)
+
             boperations.append(wsdl.operation.instance(
                 name=name,
                 operation=wsdl.soap_operation.instance(soapAction=name),
-                input=wsdl.input.instance(body=wsdl.soap_body.instance(use='literal')),
+                input=binput,
                 output=wsdl.output.instance(body=wsdl.soap_body.instance(use='literal'))))
+
+        for header in set(r.header for r in self.methods.itervalues() if r.header):
+            messages.append(wsdl.message.instance(name=header.name,
+                part=wsdl.part.instance(name=header.name, element='tns:%s' % header.name)))
 
         defs.service = [wsdl.service.instance(
             name=self.name,
@@ -120,25 +163,32 @@ class Service(object):
 
         return etree.tostring(tree)
 
-    def dispatch(self, request):
-        func, context, names, response = self.methods[request.tag]
-        args = []
-        for name in names:
+    def dispatch(self, ctx, request):
+        method = self.methods[request.tag]
+
+        if method.header:
+            ctx.header = method.header.from_node(ctx.envelope.Header._any[0])
+
+        args = [ctx] if method.need_context else []
+        for name in method.names:
             args.append(getattr(request, name))
 
-        result = func(*args)
+        result = method.func(*args)
 
         if isinstance(result, TypeInstance):
-            result = result.create(response)
+            result = result.create(method.response)
         elif not isinstance(result, Instance):
-            result = response.instance(result)
+            result = method.response.instance(result)
 
         return result
 
-    def call(self, xml):
+    def call(self, transport_request, xml):
         envelope = soap.schema.fromstring(xml)
         request = self.method_schema.from_node(envelope.Body._any[0])
-        response = self.dispatch(request)
+
+        ctx = Request(transport_request, envelope)
+
+        response = self.dispatch(ctx, request)
 
         renvelope = soap.Envelope.instance(Body=soap.Body.instance(_any=[response]))
         tree = get_root(renvelope)

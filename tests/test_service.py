@@ -3,7 +3,7 @@ from suds.client import Client
 from dropthesoap.service import Service, optional
 from dropthesoap.schema import xs
 
-from .helpers import DirectSudsTransport
+from .helpers import DirectSudsTransport, tostring
 
 def test_simple_service():
     service = Service('Boo', 'http://boo')
@@ -54,6 +54,46 @@ def test_complex_return_type():
     cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
 
     result = cl.service.add(1, 10)
-    print result
     assert result.foo == '11'
     assert result.bar == '-9'
+
+def test_header():
+    service = Service('Boo', 'http://boo')
+
+    service.schema(
+        xs.element('AuthHeader')(xs.cts(
+            xs.element('what', xs.string)))
+    )
+
+
+    def auth(func):
+        @service.header(service.schema['AuthHeader'])
+        @service.wraps(func)
+        def inner(request, *args, **kwargs):
+            if request.header.what == 'auth':
+                return func(*args, **kwargs)
+            else:
+                return 'blam'
+
+        return inner
+
+    @auth
+    @service.expose(xs.string)
+    def upper(string=xs.string):
+        return string.upper()
+
+    open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
+
+    cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
+
+    token = cl.factory.create('AuthHeader')
+    token.what = 'auth'
+    cl.set_options(soapheaders=token)
+    result = cl.service.upper('boo')
+    assert result == 'BOO'
+
+    token = cl.factory.create('AuthHeader')
+    token.what = 'abracadabra'
+    cl.set_options(soapheaders=token)
+    result = cl.service.upper('boo')
+    assert result == 'blam'

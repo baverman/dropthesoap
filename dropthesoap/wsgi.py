@@ -13,7 +13,7 @@ class Application(object):
             response = Response(self.service.get_wsdl(request.path_url))
             response.content_type = 'application/xml'
         elif request.method == 'POST' and request.path == self.endpoint_path:
-            response = Response(self.service.call(request.body))
+            response = Response(self.service.call(request, request.body))
             response.content_type = 'application/xml'
         else:
             response = HTTPNotFound()
