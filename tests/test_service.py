@@ -125,3 +125,4 @@ def test_faults():
     except WebFault as e:
         assert e.fault.faultcode == 'Client.Auth'
         assert e.fault.faultstring == 'Authentication failed'
+        assert not hasattr(e, 'detail')

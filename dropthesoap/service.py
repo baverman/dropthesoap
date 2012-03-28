@@ -191,14 +191,11 @@ class Service(object):
             ctx = Request(transport_request, envelope)
 
             response = self.dispatch(ctx, request)
+        except Fault as e:
+            response = soap.Fault.instance(faultcode=e.code, faultstring=str(e))
         except Exception as e:
-            faultcode = 'Server'
-            if isinstance(e, Fault):
-                faultcode = e.code
-            else:
-                logger.exception('Exception during soap request:')
-
-            response = soap.Fault.instance(faultcode=faultcode, faultstring=str(e),
+            logger.exception('Exception during soap request:')
+            response = soap.Fault.instance(faultcode='Server', faultstring=str(e),
                 detail=traceback.format_exc())
 
         renvelope = soap.Envelope.instance(Body=soap.Body.instance(_any=[response]))
