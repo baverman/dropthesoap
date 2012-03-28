@@ -1,6 +1,6 @@
 from suds.client import Client
 
-from dropthesoap.service import Service
+from dropthesoap.service import Service, optional
 from dropthesoap.schema import xs
 
 from .helpers import DirectSudsTransport
@@ -19,6 +19,20 @@ def test_simple_service():
     result = cl.service.add(1, 10)
     assert result == 11
 
+def test_optional_arguments_service():
+    service = Service('Boo', 'http://boo')
+
+    @service.expose(returns=xs.int)
+    def add(x=xs.int, y=optional(xs.int)):
+        if y is None:
+            return 1
+        return 0
+
+    cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
+
+    result = cl.service.add(1)
+    assert result == 1
+
 def test_complex_return_type():
     service = Service('Boo', 'http://boo')
 
@@ -35,7 +49,7 @@ def test_complex_return_type():
     def add(x=xs.int, y=xs.int):
         return ResponseType.instance(foo=x+y, bar=x-y)
 
-    open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
+    #open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
 
     cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
 

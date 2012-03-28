@@ -29,8 +29,7 @@ class Service(object):
         self.method_schema = xs.schema(Namespace(tns))
         self.schema = xs.schema(Namespace(tns))
 
-    def expose(self, returns=None, context=False):
-        assert returns
+    def expose(self, returns, context=False):
         def inner(func):
             name = func.__name__
             defaults = func.__defaults__
