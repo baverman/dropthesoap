@@ -1,4 +1,6 @@
 import traceback
+import logging
+logger = logging.getLogger('dropthesoap.request')
 
 from .schema import xs, wsdl, soap
 from .schema.model import Namespace, get_root, etree, Instance, TypeInstance
@@ -193,6 +195,8 @@ class Service(object):
             faultcode = 'Server'
             if isinstance(e, Fault):
                 faultcode = e.code
+            else:
+                logger.exception('Exception during soap request:')
 
             response = soap.Fault.instance(faultcode=faultcode, faultstring=str(e),
                 detail=traceback.format_exc())
