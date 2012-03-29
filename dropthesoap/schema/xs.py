@@ -389,12 +389,16 @@ class int(_FinalSimpleType):
         return _int(value)
 
 
-class float_(_FinalSimpleType):
+class float(_FinalSimpleType):
     namespace = namespace
 
     @staticmethod
     def to_python(value):
         return _float(value)
+
+
+class double(float):
+    namespace = namespace
 
 
 class anyType(Type):
