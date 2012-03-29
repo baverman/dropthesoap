@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from .model import Node, Namespace, Type, Instance, etree, BareInstance, ElementInstance, TypeInstance
 from ..utils import cached_property
 
@@ -379,6 +381,18 @@ class string(_FinalSimpleType):
     @staticmethod
     def to_python(value):
         return value
+
+
+class dateTime(_FinalSimpleType):
+    namespace = namespace
+
+    @staticmethod
+    def from_python(value):
+        return value.replace(microsecond=0).isoformat()
+
+    @staticmethod
+    def to_python(value):
+        return datetime.strptime(value, '%Y-%m-%dT%H:%M:%S')
 
 
 class int(_FinalSimpleType):
