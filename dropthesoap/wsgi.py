@@ -10,10 +10,10 @@ class Application(object):
         request = Request(environ)
         if request.method == 'GET' and request.query_string == 'wsdl':
             response = Response(self.service.get_wsdl(request.path_url))
-            response.content_type = 'application/xml'
+            response.content_type = 'text/xml'
         elif request.method == 'POST':
             response = Response(self.service.call(request, request.body))
-            response.content_type = 'application/xml'
+            response.content_type = 'text/xml'
         else:
             response = HTTPNotFound()
 
