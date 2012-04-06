@@ -15,10 +15,10 @@ def test_simple_schema():
         AddResponse
     )
 
-    assert validate(schema, AddRequest.instance(x=10, y=15))
+    assert validate(schema, AddRequest.instance(x='10', y='15'))
     assert validate(schema, AddResponse.instance(15))
 
-    obj = schema.fromstring(tostring(AddRequest.instance(x=11, y=12)))
+    obj = schema.fromstring(tostring(AddRequest.instance(x='11', y='12')))
     assert obj.x == '11'
     assert obj.y == 12
 

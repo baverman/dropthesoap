@@ -366,10 +366,6 @@ class _FinalSimpleType(Type):
     def fill_node(cls, node, instance, _creator):
         node.text = cls.from_python(instance.value)
 
-    @staticmethod
-    def from_python(value):
-        return unicode(value)
-
     @classmethod
     def from_node(cls, node):
         return cls.to_python(node.text)
@@ -377,6 +373,11 @@ class _FinalSimpleType(Type):
 
 class string(_FinalSimpleType):
     namespace = namespace
+
+    @staticmethod
+    def from_python(value):
+        assert isinstance(value, basestring), 'Value should be a string not %s' % (type(value))
+        return value
 
     @staticmethod
     def to_python(value):
@@ -399,12 +400,20 @@ class int(_FinalSimpleType):
     namespace = namespace
 
     @staticmethod
+    def from_python(value):
+        return str(value)
+
+    @staticmethod
     def to_python(value):
         return _int(value)
 
 
 class float(_FinalSimpleType):
     namespace = namespace
+
+    @staticmethod
+    def from_python(value):
+        return str(value)
 
     @staticmethod
     def to_python(value):

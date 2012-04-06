@@ -48,13 +48,13 @@ def test_complex_return_type():
 
     @service.expose(returns=ResponseType)
     def add(x=xs.int, y=xs.int):
-        return ResponseType.instance(foo=x+y, bar=x-y)
+        return ResponseType.instance(foo=str(x+y), bar=str(x-y))
 
     #open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
 
     cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
 
-    result = cl.service.add(1, 10)
+    result = cl.service.add('1', '10')
     assert result.foo == '11'
     assert result.bar == '-9'
 
