@@ -85,7 +85,7 @@ class Instance(object):
         self._type.init(self, *args, **kwargs)
 
     def get_node(self, creator):
-        node = creator(self._element.schema.targetNamespace, self._element.name)
+        node = self._element.create_node(creator)
         self._type.fill_node(node, self, creator)
         return node
 

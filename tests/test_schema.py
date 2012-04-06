@@ -135,3 +135,15 @@ def test_type_instances():
 
     obj = schema.fromstring(tostring(real_request))
     assert obj.x == 'message'
+
+def test_none_values_should_be_wrapped_into_empty_element():
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        xs.element('Request')(xs.cts(
+            xs.element('foo', xs.string)
+        ))
+    )
+
+    request = schema['Request'].instance(foo=None)
+    assert validate(schema, request)
+    assert '<boo:foo />' in tostring(request)
+

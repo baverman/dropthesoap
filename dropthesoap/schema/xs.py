@@ -24,7 +24,10 @@ def process_attributes(self, attributes):
             del attributes[k]
         else:
             setattr(self, k, v)
-            attributes[k] = str(v)
+            if isinstance(v, bool):
+                attributes[k] = ('false', 'true')[v]
+            else:
+                attributes[k] = str(v)
 
     return attributes
 
@@ -91,6 +94,9 @@ class element(Node):
             self.type = extract_type(type)
 
         Node.__init__(self, **attributes)
+
+    def create_node(self, creator):
+        return creator(self.schema.targetNamespace, self.name)
 
     def __call__(self, *children):
         Node.__call__(self, *children)
@@ -185,7 +191,10 @@ class sequence(Node):
                     values = [values]
 
                 for v in values:
-                    node.append(e.normalize(v).get_node(creator))
+                    if v is None:
+                        node.append(e.create_node(creator))
+                    else:
+                        node.append(e.normalize(v).get_node(creator))
 
             elif getattr(e, 'minOccurs', 1) == 0:
                 pass
