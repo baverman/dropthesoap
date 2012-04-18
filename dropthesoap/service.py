@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger('dropthesoap.request')
 
 from .schema import xs, wsdl, soap
-from .schema.model import Namespace, get_root, etree, Instance, TypeInstance
+from .schema.model import Namespace, get_root, etree
 
 class customize(object):
     def __init__(self, type, minOccurs=None, maxOccurs=None, default=None, nillable=None):
@@ -56,6 +56,12 @@ class Service(object):
         self.schema = xs.schema(Namespace(tns))
 
     def expose(self, returns):
+        if callable(returns) and not isinstance(returns, (xs.Type, xs.element, customize)) and type(returns) is not type:
+            decorated_func = returns
+            returns = None
+        else:
+            decorated_func = None
+
         def inner(func):
             name = func.__name__
             defaults = func.__defaults__
@@ -80,21 +86,24 @@ class Service(object):
             self.schema(request)
 
             rname = name + 'Response'
-            if isinstance(returns, xs.element):
-                response = returns
-                response.name = rname
-                response.attributes['name'] = rname
-            elif isinstance(returns, customize):
-                response = returns.get_element(rname)
+            if returns is None:
+                response = self.schema[rname]
             else:
-                response = xs.element(rname, returns)
+                if isinstance(returns, xs.element):
+                    response = returns
+                    response.name = rname
+                    response.attributes['name'] = rname
+                elif isinstance(returns, customize):
+                    response = returns.get_element(rname)
+                else:
+                    response = xs.element(rname, returns)
 
-            self.schema(response)
+                self.schema(response)
 
             self.methods[name] = Method(func, names, response)
             return func
 
-        return inner
+        return inner(decorated_func) if decorated_func else inner
 
     def wraps(self, original_func):
         name = original_func.__name__

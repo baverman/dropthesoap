@@ -147,3 +147,38 @@ def test_none_values_should_be_wrapped_into_empty_element():
     assert validate(schema, request)
     assert '<boo:foo />' in tostring(request)
 
+
+def test_dict_intances():
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        xs.element('Request')(xs.cts(
+            xs.element('foo')(xs.cts(
+                xs.element('x', xs.string),
+                xs.element('y', xs.int),
+            ))
+        ))
+    )
+
+    request = schema['Request'].instance(foo={'x':'boo', 'y':100})
+    assert validate(schema, request)
+
+    obj = schema.fromstring(tostring(request))
+    assert obj.foo.x == 'boo'
+    assert obj.foo.y == 100
+
+def test_type_aliases():
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        xs.complexType(name='fooType')(
+            xs.sequence()(
+                xs.element('x', xs.string),
+                xs.element('y', xs.int))),
+
+        xs.element('Request')(xs.cts(
+            xs.element('foo', 'tns:fooType')))
+    )
+
+    request = schema['Request'].instance(foo={'x':'boo', 'y':100})
+    assert validate(schema, request)
+
+    obj = schema.fromstring(tostring(request))
+    assert obj.foo.x == 'boo'
+    assert obj.foo.y == 100

@@ -4,7 +4,7 @@ from suds.client import WebFault
 from dropthesoap.service import Service, optional, Fault
 from dropthesoap.schema import xs
 
-from .helpers import DirectSudsTransport, tostring
+from .helpers import DirectSudsTransport
 
 def test_simple_service():
     service = Service('Boo', 'http://boo')
@@ -37,18 +37,15 @@ def test_optional_arguments_service():
 def test_complex_return_type():
     service = Service('Boo', 'http://boo')
 
-    ResponseType = xs.complexType(name='ResponseType')(
-        xs.sequence()(
+    service.schema(
+        xs.element('addResponse')(xs.cts(
             xs.element('foo', xs.string),
             xs.element('bar', xs.string)))
-
-    service.schema(
-        ResponseType
     )
 
-    @service.expose(returns=ResponseType)
+    @service.expose
     def add(x=xs.int, y=xs.int):
-        return ResponseType.instance(foo=str(x+y), bar=str(x-y))
+        return {'foo': str(x+y), 'bar': str(x-y)}
 
     #open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
 

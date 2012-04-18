@@ -175,7 +175,10 @@ class sequence(Node):
     def element_list(self):
         return [c for c in self.children if isinstance(c, element)]
 
-    def init(self, instance, **kwargs):
+    def init(self, instance, *args, **kwargs):
+        if args:
+            kwargs = args[0]
+
         elements = self.element_dict
         for name, value in kwargs.iteritems():
             if name not in elements:
@@ -298,8 +301,8 @@ class _DelegateType(object):
         cls.realtype.fill_node(node, instance, creator)
 
     @classmethod
-    def init(cls, instance, **kwargs):
-        cls.realtype.init(instance, **kwargs)
+    def init(cls, instance, *args, **kwargs):
+        cls.realtype.init(instance, *args, **kwargs)
 
     @classmethod
     def from_node(cls, node):
