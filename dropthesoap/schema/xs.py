@@ -452,6 +452,18 @@ class float(_FinalSimpleType):
         return _float(value)
 
 
+class boolean(_FinalSimpleType):
+    namespace = namespace
+
+    @staticmethod
+    def from_python(value):
+        return 'true' if value else 'false'
+
+    @staticmethod
+    def to_python(value):
+        return {'true':True, 'false':False, '0':False, '1':True}[value.lower()]
+
+
 class double(float):
     namespace = namespace
 

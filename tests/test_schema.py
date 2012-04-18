@@ -182,3 +182,19 @@ def test_type_aliases():
     obj = schema.fromstring(tostring(request))
     assert obj.foo.x == 'boo'
     assert obj.foo.y == 100
+
+def test_boolean():
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        xs.element('Request')(xs.cts(
+            xs.element('foo', xs.boolean)))
+    )
+
+    request = schema['Request'].instance(foo=True)
+    assert validate(schema, request)
+    obj = schema.fromstring(tostring(request))
+    assert obj.foo == True
+
+    request = schema['Request'].instance(foo=False)
+    assert validate(schema, request)
+    obj = schema.fromstring(tostring(request))
+    assert obj.foo == False
