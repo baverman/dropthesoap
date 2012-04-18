@@ -52,7 +52,6 @@ class Service(object):
         self.name = name
         self.methods = {}
 
-        self.method_schema = xs.schema(Namespace(tns))
         self.schema = xs.schema(Namespace(tns))
 
     def expose(self, returns):
@@ -82,7 +81,6 @@ class Service(object):
                 xs.complexType()(
                     xs.sequence()(*celements)))
 
-            self.method_schema(request)
             self.schema(request)
 
             rname = name + 'Response'
@@ -196,7 +194,7 @@ class Service(object):
     def call(self, transport_request, xml):
         try:
             envelope = soap.schema.fromstring(xml)
-            request = self.method_schema.from_node(envelope.Body._any[0])
+            request = self.schema.from_node(envelope.Body._any[0])
             ctx = Request(transport_request, envelope)
 
             response = self.dispatch(ctx, request)

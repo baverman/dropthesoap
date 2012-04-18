@@ -1,10 +1,10 @@
 from suds.client import Client
 from suds.client import WebFault
 
-from dropthesoap.service import Service, optional, Fault
+from dropthesoap.service import Service, optional, Fault, array
 from dropthesoap.schema import xs
 
-from .helpers import DirectSudsTransport
+from .helpers import DirectSudsTransport, tostring
 
 def test_simple_service():
     service = Service('Boo', 'http://boo')
@@ -54,6 +54,26 @@ def test_complex_return_type():
     result = cl.service.add('1', '10')
     assert result.foo == '11'
     assert result.bar == '-9'
+
+def test_aliased_types_in_params():
+    service = Service('Boo', 'http://boo')
+
+    service.schema(
+        xs.complexType(name='paramType')(xs.sequence()(
+            xs.element('foo', xs.string)))
+    )
+
+    @service.expose(xs.string)
+    def concat(param=array('paramType')):
+        return ''.join(r.foo for r in param)
+
+    open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
+
+    cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
+
+    result = cl.service.concat([{'foo':'boo'}, {'foo':'bar'}])
+    assert result == 'boobar'
+
 
 def test_header():
     service = Service('Boo', 'http://boo')
