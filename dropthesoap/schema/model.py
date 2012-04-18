@@ -14,6 +14,13 @@ class TypeNameDescriptor(object):
         return instance.attributes['name'] if instance else cls.tag
 
 
+def resolve_type(etype):
+    if isinstance(etype, TypeAlias) or (type(etype) is type and issubclass(etype, TypeAlias)):
+        return etype.get_real_type()
+    else:
+        return etype
+
+
 class Node(object):
     tag = TagDescriptor()
     type_name = TypeNameDescriptor()
@@ -30,12 +37,12 @@ class Node(object):
         attributes = self.attributes
         if 'type' in attributes:
             attributes = attributes.copy()
-            etype = attributes['type']
+            etype = resolve_type(attributes['type'])
             attributes['type'] = creator.get_prefixed_tag(etype.namespace, etype.type_name)
 
         if 'base' in attributes:
             attributes = attributes.copy()
-            etype = attributes['base']
+            etype = resolve_type(attributes['base'])
             attributes['base'] = creator.get_prefixed_tag(etype.namespace, etype.type_name)
 
         node = creator(self.__class__.namespace, self.tag, attributes)
@@ -43,7 +50,6 @@ class Node(object):
             node.append(child.get_node(creator))
 
         return node
-
 
 class Type(Node):
     class InstanceClassDescriptor(object):
@@ -59,8 +65,8 @@ class Type(Node):
             result = self.cache[cls] = create_instance_class(cls)
             return result
 
-    instance_class = InstanceClassDescriptor()
 
+    instance_class = InstanceClassDescriptor()
     @classmethod
     def get_name(cls):
         return cls.__name__
@@ -68,6 +74,33 @@ class Type(Node):
     @classmethod
     def instance(cls, *args, **kwargs):
         return TypeInstance(cls, *args, **kwargs)
+
+    @staticmethod
+    def alias(element, name):
+        fields = {}
+        fields['_element'] = element
+        fields['_name'] = name
+        name = name + 'Alias'
+
+        return type(name, (TypeAlias,), fields)
+
+
+class TypeAlias(Type):
+    @classmethod
+    def get_real_type(cls):
+        return cls._element.schema.types[cls._name]
+
+    @classmethod
+    def fill_node(cls, node, instance, creator):
+        cls.get_real_type().fill_node(node, instance, creator)
+
+    @classmethod
+    def init(cls, instance, *args, **kwargs):
+        cls.get_real_type().init(instance, *args, **kwargs)
+
+    @classmethod
+    def from_node(cls, node):
+        return cls.get_real_type().from_node(node)
 
 
 class Namespace(object):

@@ -48,10 +48,27 @@ class schema(Node):
 
         return result
 
+    @cached_property
+    def types(self):
+        result = {}
+        for c in self.children:
+            if isinstance(c, Type):
+                result[c.type_name] = c
+
+        return result
+
     def __getitem__(self, name):
         return self.top_elements[self.qname(name)]
 
     def update_schema(self, nodes):
+        try:
+            del self._top_elements
+        except AttributeError: pass
+
+        try:
+            del self._types
+        except AttributeError: pass
+
         for c in nodes:
             if isinstance(c, element) and not hasattr(c, 'schema'):
                 c.schema = self
@@ -90,6 +107,9 @@ class element(Node):
         attributes = process_attributes(self, locals())
 
         if type is not None:
+            if isinstance(type, basestring):
+                type = Type.alias(self, type)
+
             attributes['type'] = type
             self.type = extract_type(type)
 

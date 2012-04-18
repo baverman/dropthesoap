@@ -173,7 +173,7 @@ def test_type_aliases():
                 xs.element('y', xs.int))),
 
         xs.element('Request')(xs.cts(
-            xs.element('foo', 'tns:fooType')))
+            xs.element('foo', 'fooType')))
     )
 
     request = schema['Request'].instance(foo={'x':'boo', 'y':100})
