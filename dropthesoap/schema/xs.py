@@ -364,6 +364,10 @@ class complexType(Type, _DelegateType):
 class simpleType(Type, _DelegateType):
     namespace = namespace
     type_counter = 0
+    
+    def __init__(self, name=None):
+        attributes = process_attributes(self, locals())
+        Type.__init__(self, **attributes)
 
     @classmethod
     def init(cls, instance, value):
