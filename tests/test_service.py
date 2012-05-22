@@ -85,7 +85,7 @@ def test_header():
 
 
     def auth(func):
-        @service.header(service.schema['AuthHeader'])
+        @service.header('AuthHeader')
         @service.wraps(func)
         def inner(request, *args):
             if request.header.what == 'auth':

@@ -115,7 +115,11 @@ class Service(object):
 
     def header(self, header):
         def inner(func):
-            self.methods[func.__name__].header = header
+            rheader = header
+            if isinstance(rheader, basestring):
+                rheader = self.schema[rheader]
+
+            self.methods[func.__name__].header = rheader
             return func
 
         return inner
