@@ -333,6 +333,10 @@ class complexType(Type, _DelegateType):
     namespace = namespace
     type_counter = 0
 
+    def __init__(self, name=None):
+        attributes = process_attributes(self, locals())
+        Type.__init__(self, **attributes)
+
     def __call__(self, *children):
         name = self.attributes.get('name', None)
         if not name:
