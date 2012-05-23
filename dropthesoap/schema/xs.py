@@ -428,6 +428,32 @@ class string(_FinalSimpleType):
         return value
 
 
+class base64Binary(_FinalSimpleType):
+    namespace = namespace
+
+    @staticmethod
+    def from_python(value):
+        assert isinstance(value, str), 'Value should be a str not %s' % (type(value))
+        return value.encode('base64')
+
+    @staticmethod
+    def to_python(value):
+        return value.decode('base64')
+
+
+class hexBinary(_FinalSimpleType):
+    namespace = namespace
+
+    @staticmethod
+    def from_python(value):
+        assert isinstance(value, str), 'Value should be a str not %s' % (type(value))
+        return value.encode('hex')
+
+    @staticmethod
+    def to_python(value):
+        return value.decode('hex')
+
+
 class dateTime(_FinalSimpleType):
     namespace = namespace
 

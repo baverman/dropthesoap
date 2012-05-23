@@ -199,6 +199,25 @@ def test_boolean():
     obj = schema.fromstring(tostring(request))
     assert obj.foo == False
 
+def test_binary_data():
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        xs.element('Request')(xs.cts(
+            xs.element('foo', xs.hexBinary),
+            xs.element('boo', xs.base64Binary)))
+    )
+
+    data = '\x01\x02\x03'
+    request = schema['Request'].instance(foo=data, boo=data)
+    assert validate(schema, request)
+
+    string_request = tostring(request)
+    assert '010203' in string_request
+    assert 'AQID' in string_request
+
+    obj = schema.fromstring(string_request)
+    assert obj.foo == data
+    assert obj.boo == data
+
 def test_dict_instantiation_for_aliased_types():
     schema = xs.schema(Namespace('http://boo', 'boo'))(
         xs.complexType('Point')(
