@@ -187,7 +187,10 @@ class Service(object):
         method = self.methods[request.tag]
 
         if method.header:
-            ctx.header = method.header.from_node(ctx.envelope.Header._any[0])
+            if ctx.envelope.Header:
+                ctx.header = method.header.from_node(ctx.envelope.Header._any[0])
+            else:
+                ctx.header = None
 
         args = [ctx] if method.need_context else []
         for name in method.names:
