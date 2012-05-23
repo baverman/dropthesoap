@@ -286,7 +286,11 @@ class AttributeFiller(object):
         if self.realtype:
             self.realtype.fill_node(node, instance, creator)
 
-    def init(self, instance, **kwargs):
+    def init(self, instance, *args, **kwargs):
+        if args:
+            kwargs = args[0]
+
+        kwargs = kwargs.copy()
         for k in list(kwargs):
             if k in self.attributes:
                 setattr(instance, k, kwargs[k])
@@ -364,7 +368,7 @@ class complexType(Type, _DelegateType):
 class simpleType(Type, _DelegateType):
     namespace = namespace
     type_counter = 0
-    
+
     def __init__(self, name=None):
         attributes = process_attributes(self, locals())
         Type.__init__(self, **attributes)

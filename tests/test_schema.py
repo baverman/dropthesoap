@@ -198,3 +198,27 @@ def test_boolean():
     assert validate(schema, request)
     obj = schema.fromstring(tostring(request))
     assert obj.foo == False
+
+def test_dict_instantiation_for_aliased_types():
+    schema = xs.schema(Namespace('http://boo', 'boo'))(
+        xs.complexType('Point')(
+            xs.attribute('x', xs.int),
+            xs.attribute('y', xs.int)),
+
+        xs.complexType('Vector')(
+            xs.sequence()(
+                xs.element('a', 'Point'),
+                xs.element('b', 'Point'))),
+
+        xs.element('Request')(xs.cts(
+            xs.element('vector', 'Vector', minOccurs=0, maxOccurs=xs.unbounded))),
+    )
+
+    request = schema['Request'].instance(vector=[{'a':{'x':1, 'y':2}, 'b':{'x':3, 'y':4}}])
+    assert validate(schema, request)
+    obj = schema.fromstring(tostring(request))
+    print tostring(request)
+    assert obj.vector[0].a.x == 1
+    assert obj.vector[0].a.y == 2
+    assert obj.vector[0].b.x == 3
+    assert obj.vector[0].b.y == 4
