@@ -1,6 +1,10 @@
+import traceback
+from wsgiref.simple_server import make_server
+
 from webob import Request, Response
 from webob.exc import HTTPNotFound
-from wsgiref.simple_server import make_server
+
+from .schema import soap
 
 class Application(object):
     def __init__(self, service):
@@ -12,7 +16,13 @@ class Application(object):
             response = Response(self.service.get_wsdl(request.path_url))
             response.content_type = 'text/xml'
         elif request.method == 'POST':
-            response = Response(self.service.call(request, request.body))
+            try:
+                result = self.service.call(request, request.body)
+            except Exception as e:
+                result = soap.Fault.instance(faultcode='Server', faultstring=e.message,
+                    detail=traceback.format_exc())
+
+            response = Response(self.service.response_to_string(result))
             response.content_type = 'text/xml'
         else:
             response = HTTPNotFound()

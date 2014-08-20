@@ -194,13 +194,11 @@ class Service(object):
             response = method(ctx, request)
         except Fault as e:
             response = soap.Fault.instance(faultcode=e.code, faultstring=e.message)
-        except Exception as e:
-            logger.exception('Exception during soap request:')
-            response = soap.Fault.instance(faultcode='Server', faultstring=e.message,
-                detail=traceback.format_exc())
 
+        return response
+
+    def response_to_string(self, response):
         renvelope = soap.Envelope.instance(Body=soap.Body.instance(_any=[response]))
         tree = get_root(renvelope)
         tree.attrib['soap:encodingStyle'] = 'http://www.w3.org/2001/12/soap-encoding'
-
         return etree.tostring(tree, encoding='utf-8')

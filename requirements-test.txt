@@ -1,0 +1,4 @@
+WebOb
+lxml
+pytest
+suds
