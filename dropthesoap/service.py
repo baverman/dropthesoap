@@ -5,25 +5,6 @@ logger = logging.getLogger('dropthesoap.request')
 from .schema import xs, wsdl, soap
 from .schema.model import Namespace, get_root, etree
 
-class customize(object):
-    def __init__(self, type, minOccurs=None, maxOccurs=None, default=None, nillable=None):
-        self.attributes = locals().copy()
-        del self.attributes['self']
-        del self.attributes['type']
-        self.type = type
-
-    def get_element(self, name):
-        return xs.element(name, self.type, **self.attributes)
-
-class optional(customize):
-    def __init__(self, type):
-        customize.__init__(self, type, minOccurs=0)
-
-
-class array(customize):
-    def __init__(self, type):
-        customize.__init__(self, type, minOccurs=0, maxOccurs=xs.unbounded)
-
 
 class Request(object):
     def __init__(self, transport_request, envelope):
@@ -33,12 +14,29 @@ class Request(object):
 
 
 class Method(object):
-    def __init__(self, func, names, response):
+    def __init__(self, func, request, response):
         self.func = func
-        self.names = names
+        self.request = request
         self.response = response
         self.need_context = False
         self.header = None
+
+    def __call__(self, ctx, request):
+        if self.header:
+            if ctx.envelope.Header:
+                ctx.header = self.header.from_node(ctx.envelope.Header._any[0])
+            else:
+                ctx.header = None
+
+        args = [ctx] if self.need_context else []
+        if self.request._unpack_params:
+            for name in self.request._params:
+                args.append(getattr(request, name))
+        else:
+            args.append(request)
+
+        return self.response.normalize(self.func(*args))
+
 
 
 class Fault(Exception):
@@ -51,54 +49,58 @@ class Service(object):
     def __init__(self, name, tns):
         self.name = name
         self.methods = {}
+        self.req2method = {}
 
         self.schema = xs.schema(Namespace(tns))
 
-    def expose(self, returns):
-        if callable(returns) and not isinstance(returns, (xs.Type, xs.element, customize)) and type(returns) is not type:
-            decorated_func = returns
-            returns = None
+    def expose(self, request=None, response=None):
+        if callable(request) and not isinstance(request, (xs.Type, xs.element)) and type(request) is not type:
+            decorated_func = request
+            request = None
         else:
             decorated_func = None
 
         def inner(func):
             name = func.__name__
-            defaults = func.__defaults__
-            if defaults:
-                names = func.__code__.co_varnames[:func.__code__.co_argcount][-len(defaults):]
-            else:
-                names = []
-                defaults = []
 
-            celements = []
-            for n, t in zip(names, defaults):
-                if isinstance(t, customize):
-                    celements.append(t.get_element(n))
+            req_name = name + 'Request'
+            if request is None:
+                defaults = func.__defaults__
+                if defaults:
+                    names = func.__code__.co_varnames[:func.__code__.co_argcount][-len(defaults):]
                 else:
-                    celements.append(xs.element(n, t))
+                    names = []
+                    defaults = []
 
-            request = xs.element(name=name)(
-                xs.complexType()(
-                    xs.sequence()(*celements)))
-
-            self.schema(request)
-
-            rname = name + 'Response'
-            if returns is None:
-                response = self.schema[rname]
+                celements = [xs.element(n, t) for n, t in zip(names, defaults)]
+                request_elem = xs.element(req_name)(xs.cts(*celements))
+                request_elem._params = names
+                request_elem._unpack_params = True
             else:
-                if isinstance(returns, xs.element):
-                    response = returns
-                    response.name = rname
-                    response.attributes['name'] = rname
-                elif isinstance(returns, customize):
-                    response = returns.get_element(rname)
+                if isinstance(request, xs.element):
+                    request_elem = request
+                    req_name = request.name
                 else:
-                    response = xs.element(rname, returns)
+                    request_elem = xs.element(req_name, request)
 
-                self.schema(response)
+                request_elem._unpack_params = False
 
-            self.methods[name] = Method(func, names, response)
+            self.schema(request_elem)
+
+            resp_name = name + 'Response'
+            if response is None:
+                response_elem = self.schema[resp_name]
+            else:
+                if isinstance(response, xs.element):
+                    response_elem = response
+                else:
+                    response_elem = xs.element(resp_name, response)
+
+                self.schema(response_elem)
+
+            method = Method(func, request_elem, response_elem)
+            self.methods[name] = method
+            self.req2method[req_name] = method
             return func
 
         return inner(decorated_func) if decorated_func else inner
@@ -141,18 +143,18 @@ class Service(object):
         boperations = binding.operation = []
 
         for name, method in self.methods.iteritems():
-            nameRequest = '%sRequest' % name
-            nameResponse = '%sResponse' % name
+            req_name = method.request.name
+            resp_name = method.response.name
 
-            messages.append(wsdl.message.instance(name=nameRequest,
-                part=wsdl.part.instance(name='parameters', element='tns:%s' % name)))
+            messages.append(wsdl.message.instance(name=req_name,
+                part=wsdl.part.instance(name='parameters', element='tns:%s' % req_name)))
 
-            messages.append(wsdl.message.instance(name=nameResponse,
-                part=wsdl.part.instance(name='parameters', element='tns:%s' % nameResponse)))
+            messages.append(wsdl.message.instance(name=resp_name,
+                part=wsdl.part.instance(name='parameters', element='tns:%s' % resp_name)))
 
             operations.append(wsdl.operation.instance(name=name,
-                input=wsdl.input.instance(message='tns:%s' % nameRequest),
-                output=wsdl.output.instance(message='tns:%s' % nameResponse)))
+                input=wsdl.input.instance(message='tns:%s' % req_name),
+                output=wsdl.output.instance(message='tns:%s' % resp_name)))
 
             binput = wsdl.input.instance(body=wsdl.soap_body.instance(use='literal'))
             if method.header:
@@ -183,28 +185,13 @@ class Service(object):
 
         return etree.tostring(tree)
 
-    def dispatch(self, ctx, request):
-        method = self.methods[request.tag]
-
-        if method.header:
-            if ctx.envelope.Header:
-                ctx.header = method.header.from_node(ctx.envelope.Header._any[0])
-            else:
-                ctx.header = None
-
-        args = [ctx] if method.need_context else []
-        for name in method.names:
-            args.append(getattr(request, name))
-
-        return method.response.normalize(method.func(*args))
-
     def call(self, transport_request, xml):
         try:
             envelope = soap.schema.fromstring(xml)
             request = self.schema.from_node(envelope.Body._any[0])
             ctx = Request(transport_request, envelope)
-
-            response = self.dispatch(ctx, request)
+            method = self.req2method[request.tag]
+            response = method(ctx, request)
         except Fault as e:
             response = soap.Fault.instance(faultcode=e.code, faultstring=e.message)
         except Exception as e:

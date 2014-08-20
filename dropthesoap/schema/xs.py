@@ -10,18 +10,36 @@ _any = any
 _int = int
 _float = float
 
+
 def extract_type(value):
     return value if type(value) is type else value.__class__
+
 
 def is_type(value):
     return (type(value) is type and issubclass(value, Type)) or isinstance(value, Type)
 
+
 def process_attributes(self, attributes):
-    attributes = attributes.copy()
-    attributes.pop('self', None)
+    attributes = {k: v for k, v in attributes.iteritems()
+        if v is not None and k != 'self'}
+
+    type = attributes.pop('type', None)
+    if type is not None:
+        if isinstance(type, customize):
+            attrs = type.attributes.copy()
+            attrs.update(attributes)
+            attributes = attrs
+            type = type.type
+
+        if isinstance(type, basestring):
+            type = Type.alias(self, type)
+
+        attributes['type'] = type
+        self.type = extract_type(type)
+
     for k, v in attributes.items():
-        if v is None:
-            del attributes[k]
+        if k == 'type':
+            continue
         else:
             setattr(self, k, v)
             if isinstance(v, bool):
@@ -30,6 +48,29 @@ def process_attributes(self, attributes):
                 attributes[k] = str(v)
 
     return attributes
+
+
+class customize(Type):
+    def __init__(self, type, **attributes):
+        self.type = type
+        self.attributes = attributes
+
+    def __call__(self, **attributes):
+        attrs = self.attributes.copy()
+        attrs.update(attributes)
+        return customize(self.type, **attrs)
+
+
+def optional(type):
+    return customize(type, minOccurs=0)
+
+
+def array(type):
+    return customize(type, minOccurs=0, maxOccurs=unbounded)
+
+
+def rarray(type):
+    return customize(type, minOccurs=1, maxOccurs=unbounded)
 
 
 class schema(Node):
@@ -105,14 +146,6 @@ class element(Node):
             block=None, final=None):
 
         attributes = process_attributes(self, locals())
-
-        if type is not None:
-            if isinstance(type, basestring):
-                type = Type.alias(self, type)
-
-            attributes['type'] = type
-            self.type = extract_type(type)
-
         Node.__init__(self, **attributes)
 
     def create_node(self, creator):
@@ -168,11 +201,6 @@ class attribute(Node):
     namespace = namespace
     def __init__(self, name=None, type=None, default=None, use=None, ref=None, form=None, fixed=None):
         attributes = process_attributes(self, locals())
-
-        if type is not None:
-            attributes['type'] = type
-            self.type = extract_type(type)
-
         Node.__init__(self, **attributes)
 
     def instance(self, *args, **kwargs):

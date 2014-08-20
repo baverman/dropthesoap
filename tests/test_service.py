@@ -1,15 +1,16 @@
 from suds.client import Client
 from suds.client import WebFault
 
-from dropthesoap.service import Service, optional, Fault, array
+from dropthesoap.service import Service, Fault
 from dropthesoap.schema import xs
 
 from .helpers import DirectSudsTransport, tostring
 
+
 def test_simple_service():
     service = Service('Boo', 'http://boo')
 
-    @service.expose(returns=xs.int)
+    @service.expose(response=xs.int)
     def add(x=xs.int, y=xs.int):
         return x + y
 
@@ -20,11 +21,12 @@ def test_simple_service():
     result = cl.service.add(1, 10)
     assert result == 11
 
+
 def test_optional_arguments_service():
     service = Service('Boo', 'http://boo')
 
-    @service.expose(returns=xs.int)
-    def add(x=xs.int, y=optional(xs.int)):
+    @service.expose(response=xs.int)
+    def add(x=xs.int, y=xs.optional(xs.int)):
         if y is None:
             return 1
         return 0
@@ -33,6 +35,7 @@ def test_optional_arguments_service():
 
     result = cl.service.add(1)
     assert result == 1
+
 
 def test_complex_return_type():
     service = Service('Boo', 'http://boo')
@@ -55,6 +58,7 @@ def test_complex_return_type():
     assert result.foo == '11'
     assert result.bar == '-9'
 
+
 def test_aliased_types_in_params():
     service = Service('Boo', 'http://boo')
 
@@ -63,8 +67,8 @@ def test_aliased_types_in_params():
             xs.element('foo', xs.string)))
     )
 
-    @service.expose(xs.string)
-    def concat(param=array('paramType')):
+    @service.expose(response=xs.string)
+    def concat(param=xs.array('paramType')):
         return ''.join(r.foo for r in param)
 
     open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
@@ -73,6 +77,25 @@ def test_aliased_types_in_params():
 
     result = cl.service.concat([{'foo':'boo'}, {'foo':'bar'}])
     assert result == 'boobar'
+
+
+def test_full_request_response():
+    service = Service('Boo', 'http://boo')
+    service.schema(
+        xs.complexType('Foo')(
+            xs.sequence()(
+                xs.element('foo', xs.string, maxOccurs=xs.unbounded)))
+    )
+
+    @service.expose(xs.element('fooReq', 'Foo'), 'Foo')
+    def foo(request):
+        return {'foo': [r + 'foo' for r in request.foo]}
+
+    open('/tmp/wow.xml', 'w').write(service.get_wsdl('http://localhost/'))
+
+    cl = Client('some address', transport=DirectSudsTransport(service), cache=None)
+    result = cl.service.foo(['one', 'two'])
+    assert result == ['onefoo', 'twofoo']
 
 
 def test_header():
@@ -96,7 +119,7 @@ def test_header():
         return inner
 
     @auth
-    @service.expose(xs.string)
+    @service.expose(response=xs.string)
     def upper(string=xs.string):
         return string.upper()
 
@@ -116,10 +139,11 @@ def test_header():
     result = cl.service.upper('boo')
     assert result == 'blam'
 
+
 def test_faults():
     service = Service('Boo', 'http://boo')
 
-    @service.expose(xs.string)
+    @service.expose(response=xs.string)
     def upper(string=xs.string):
         if string == 'boo':
             raise Exception('Boo')
