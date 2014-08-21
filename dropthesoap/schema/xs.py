@@ -23,6 +23,7 @@ def process_attributes(self, attributes):
     attributes = {k: v for k, v in attributes.iteritems()
         if v is not None and k != 'self'}
 
+    after = None
     type = attributes.pop('type', None)
     if type is not None:
         if isinstance(type, customize):
@@ -34,8 +35,11 @@ def process_attributes(self, attributes):
         if isinstance(type, basestring):
             type = Type.alias(self, type)
 
-        attributes['type'] = type
-        self.type = extract_type(type)
+        if type.type_name:
+            attributes['type'] = type
+            self.type = extract_type(type)
+        else:
+            after = type
 
     for k, v in attributes.items():
         if k == 'type':
@@ -47,7 +51,7 @@ def process_attributes(self, attributes):
             else:
                 attributes[k] = str(v)
 
-    return attributes
+    return attributes, after
 
 
 class customize(Type):
@@ -145,8 +149,9 @@ class element(Node):
             fixed=None, form=None, maxOccurs=None, minOccurs=None, nillable=None, abstract=None,
             block=None, final=None):
 
-        attributes = process_attributes(self, locals())
+        attributes, after = process_attributes(self, locals())
         Node.__init__(self, **attributes)
+        after and self(after)
 
     def create_node(self, creator):
         return creator(self.schema.targetNamespace, self.name)
@@ -200,8 +205,9 @@ class element(Node):
 class attribute(Node):
     namespace = namespace
     def __init__(self, name=None, type=None, default=None, use=None, ref=None, form=None, fixed=None):
-        attributes = process_attributes(self, locals())
+        attributes, after = process_attributes(self, locals())
         Node.__init__(self, **attributes)
+        after and self(after)
 
     def instance(self, *args, **kwargs):
         return self.type.instance_class(self, *args, **kwargs)
@@ -366,7 +372,7 @@ class complexType(Type, _DelegateType):
     type_counter = 0
 
     def __init__(self, name=None):
-        attributes = process_attributes(self, locals())
+        attributes, _ = process_attributes(self, locals())
         Type.__init__(self, **attributes)
 
     def __call__(self, *children):
@@ -398,7 +404,7 @@ class simpleType(Type, _DelegateType):
     type_counter = 0
 
     def __init__(self, name=None):
-        attributes = process_attributes(self, locals())
+        attributes, _ = process_attributes(self, locals())
         Type.__init__(self, **attributes)
 
     @classmethod
@@ -551,7 +557,7 @@ class anyType(Type):
 class any(element):
     namespace = namespace
     def __init__(self, minOccurs=None, maxOccurs=None, namespace=None, processContents=None):
-        attributes = process_attributes(self, locals())
+        attributes, _ = process_attributes(self, locals())
         self.name = '_any'
         self.type = anyType
         Node.__init__(self, **attributes)

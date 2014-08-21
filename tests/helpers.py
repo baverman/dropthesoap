@@ -40,4 +40,4 @@ class DirectSudsTransport(Transport):
             result = soap.Fault.instance(faultcode='Server', faultstring=e.message,
                 detail=traceback.format_exc())
 
-        return Reply('200 OK', {}, self._service.response_to_string(result))
+        return Reply('200 OK', {}, soap.response_tostring(result))

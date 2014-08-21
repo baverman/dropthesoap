@@ -22,7 +22,7 @@ class Application(object):
                 result = soap.Fault.instance(faultcode='Server', faultstring=e.message,
                     detail=traceback.format_exc())
 
-            response = Response(self.service.response_to_string(result))
+            response = Response(soap.response_tostring(result))
             response.content_type = 'text/xml'
         else:
             response = HTTPNotFound()

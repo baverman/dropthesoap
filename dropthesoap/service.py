@@ -1,7 +1,3 @@
-import traceback
-import logging
-logger = logging.getLogger('dropthesoap.request')
-
 from .schema import xs, wsdl, soap
 from .schema.model import Namespace, get_root, etree
 
@@ -49,10 +45,7 @@ def make_message_element(name, obj):
     if isinstance(obj, xs.element):
         return obj
     else:
-        if isinstance(obj, xs.Type) and not hasattr(obj, 'name'):
-            return xs.element(name)(obj)
-        else:
-            return xs.element(name, obj)
+        return xs.element(name, obj)
 
 
 class Service(object):
@@ -198,9 +191,3 @@ class Service(object):
             response = soap.Fault.instance(faultcode=e.code, faultstring=e.message)
 
         return response
-
-    def response_to_string(self, response):
-        renvelope = soap.Envelope.instance(Body=soap.Body.instance(_any=[response]))
-        tree = get_root(renvelope)
-        tree.attrib['soap:encodingStyle'] = 'http://www.w3.org/2001/12/soap-encoding'
-        return etree.tostring(tree, encoding='utf-8')

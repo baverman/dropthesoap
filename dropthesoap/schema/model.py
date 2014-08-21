@@ -11,7 +11,7 @@ class TagDescriptor(object):
 
 class TypeNameDescriptor(object):
     def __get__(_self, instance, cls):
-        return instance.attributes['name'] if instance else cls.tag
+        return instance.attributes.get('name') if instance else cls.tag
 
 
 def resolve_type(etype):
