@@ -45,6 +45,16 @@ class Fault(Exception):
         Exception.__init__(self, message)
 
 
+def make_message_element(name, obj):
+    if isinstance(obj, xs.element):
+        return obj
+    else:
+        if isinstance(obj, xs.Type) and not hasattr(obj, 'name'):
+            return xs.element(name)(obj)
+        else:
+            return xs.element(name, obj)
+
+
 class Service(object):
     def __init__(self, name, tns):
         self.name = name
@@ -77,12 +87,8 @@ class Service(object):
                 request_elem._params = names
                 request_elem._unpack_params = True
             else:
-                if isinstance(request, xs.element):
-                    request_elem = request
-                    req_name = request.name
-                else:
-                    request_elem = xs.element(req_name, request)
-
+                request_elem = make_message_element(req_name, request)
+                req_name = request_elem.name
                 request_elem._unpack_params = False
 
             self.schema(request_elem)
@@ -91,11 +97,7 @@ class Service(object):
             if response is None:
                 response_elem = self.schema[resp_name]
             else:
-                if isinstance(response, xs.element):
-                    response_elem = response
-                else:
-                    response_elem = xs.element(resp_name, response)
-
+                response_elem = make_message_element(resp_name, response)
                 self.schema(response_elem)
 
             method = Method(func, request_elem, response_elem)
