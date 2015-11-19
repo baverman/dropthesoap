@@ -36,7 +36,7 @@ soap_schema = xs.schema(Namespace('http://schemas.xmlsoap.org/wsdl/soap/', 'soap
 
 # wsdl elements
 types = xs.element('types')(xs.cts(
-    xs.any(minOccurs=0)))
+    xs.any(minOccurs=0, maxOccurs=xs.unbounded)))
 
 part = xs.element('part')(
     xs.complexType()(

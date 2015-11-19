@@ -512,6 +512,9 @@ class int(_FinalSimpleType):
         return _int(value)
 
 
+class long(int):pass
+
+
 class float(_FinalSimpleType):
     namespace = namespace
 

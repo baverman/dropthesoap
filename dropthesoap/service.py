@@ -49,15 +49,18 @@ def make_message_element(name, obj):
 
 
 class Service(object):
-    def __init__(self, name, tns):
+    def __init__(self, name, tns, additional_schemas=None):
         self.name = name
         self.methods = {}
         self.req2method = {}
 
         self.schema = xs.schema(Namespace(tns))
+        self.additional_schemas = additional_schemas or []
 
     def expose(self, request=None, response=None):
-        if callable(request) and not isinstance(request, (xs.Type, xs.element)) and type(request) is not type:
+        if (callable(request)
+                and not isinstance(request, (xs.Type, xs.element))
+                and type(request) is not type):
             decorated_func = request
             request = None
         else:
@@ -123,7 +126,8 @@ class Service(object):
 
     def get_wsdl(self, url):
         defs = wsdl.definitions.instance()
-        defs.types = wsdl.types.instance(_any=get_root(self.schema))
+        defs.types = wsdl.types.instance(
+            _any=map(get_root, [self.schema] + self.additional_schemas))
 
         messages = defs.message = []
 
