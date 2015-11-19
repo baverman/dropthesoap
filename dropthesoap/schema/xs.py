@@ -231,7 +231,7 @@ class sequence(Node):
 
     def init(self, instance, *args, **kwargs):
         if args:
-            kwargs = args[0]
+            kwargs = args[0] or {}
 
         elements = self.element_dict
         for name, value in kwargs.iteritems():
